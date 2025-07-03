@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operator Login | E-Terminus</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <style>
+        :root {
+            --gradient-primary: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
+            --gradient-primary-light: linear-gradient(135deg, rgba(255, 138, 101, 0.9) 0%, rgba(233, 30, 99, 0.9) 100%);
+            --dark-bg: #343a40;
+        }
+        
+        body {
+            font-family: 'Ubuntu', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: url('../images/admin-bg.jpg') no-repeat center center;
+            background-size: cover;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient-primary);
+            opacity: 0.8;
+            z-index: -1;
+        }
+        
+        .auth-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            overflow: hidden;
+            background-color: rgba(255, 255, 255, 0.95);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .auth-header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .btn-admin {
+            background: var(--gradient-primary);
+            border: none;
+            padding: 12px;
+            font-weight: 500;
+            transition: all 0.3s;
+            color: white;
+        }
+        
+        .btn-admin:hover {
+            background: var(--gradient-primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4);
+            color: white;
+        }
+        
+        .form-control:focus {
+            border-color: #FF5722;
+            box-shadow: 0 0 0 0.25rem rgba(255, 87, 34, 0.25);
+        }
+        
+        .input-group-text {
+            background: #e9ecef;
+            border-right: none;
+        }
+        
+        .admin-alert {
+            border-left: 4px solid #FF5722;
+            background-color: rgba(255, 87, 34, 0.1);
+        }
+        
+        .form-check-input:checked {
+            background-color: #FF5722;
+            border-color: #FF5722;
+        }
+        
+        .navbar-admin {
+            background: var(--gradient-primary) !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-admin">
+        <div class="container">
+            <a class="navbar-brand" href="../index.html">
+                <i class="fas fa-bus me-2"></i>E-Terminus <span class="badge bg-light text-dark ms-2">Operator</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Operator Login Form -->
+    <div class="container my-auto py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <h3><i class="fas fa-user-shield me-2"></i>Operator Portal</h3>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="alert admin-alert alert-light mb-4">
+                            <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                            Restricted access to authorized personnel only
+                        </div>
+                        
+                        <form id="operatorLoginForm" novalidate>
+                            <!-- Company ID -->
+                            <div class="mb-3">
+                                <label class="form-label">Operator ID</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                    <input type="text" class="form-control" placeholder="OP-XXXXXX" required>
+                                </div>
+                            </div>
+                            
+                            <!-- Password -->
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Remember Me -->
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="rememberOperator">
+                                <label class="form-check-label" for="rememberOperator">Remember this device</label>
+                            </div>
+                            
+                            <!-- Submit -->
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-admin btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                                </button>
+                            </div>
+                            
+                            <!-- Support Link -->
+                            <div class="text-center mt-3">
+                                <a href="mailto:support@eterminus.com" class="text-muted small">
+                                    <i class="fas fa-life-ring me-1"></i>Operator Support
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="py-4 mt-auto navbar-admin">
+        <div class="container text-center text-white">
+            <p class="mb-0 small">© 2025 E-Terminus. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Password visibility toggle
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.previousElementSibling;
+                const icon = this.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('fa-eye', 'fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('fa-eye-slash', 'fa-eye');
+                }
+            });
+        });
+
+        // Form validation
+        document.getElementById('operatorLoginForm').addEventListener('submit', function(e) {
+            if (!this.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            this.classList.add('was-validated');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Terminus | Book Intercity Buses in Zambia</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <style>
+        :root {
+            --gradient-primary: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
+            --gradient-primary-light: linear-gradient(135deg, rgba(255, 138, 101, 0.9) 0%, rgba(233, 30, 99, 0.9) 100%);
+            --dark-bg: #343a40;
+        }
+        
+        body {
+            font-family: 'Ubuntu', sans-serif;
+        }
+        
+        /* Navbar (Matches Admin) */
+        .navbar {
+            background: var(--dark-bg) !important;
+            padding: 1rem 0;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            position: relative;
+            color: white;
+            padding: 5rem 0 6rem;
+            clip-path: ellipse(100% 100% at 50% 0%);
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient-primary);
+            z-index: -1;
+        }
+        
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            opacity: 0.8;
+        }
+        
+        .route-picker {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        /* Fix for form labels visibility */
+        .route-picker .form-label {
+            color: #343a40 !important;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .form-control {
+            border: 2px solid #eee;
+            padding: 12px 15px;
+            height: auto;
+        }
+        
+        .form-control:focus {
+            border-color: #FF5722;
+            box-shadow: 0 0 0 0.25rem rgba(255, 87, 34, 0.25);
+        }
+        
+        /* Buttons */
+        .btn-eterminus {
+            background: var(--gradient-primary);
+            border: none;
+            padding: 12px 30px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+        }
+        
+        .btn-eterminus:hover {
+            background: var(--gradient-primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4);
+        }
+        
+        /* Trust Badges */
+        .trust-badge {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            padding: 0.5rem 1.5rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        /* Popular Routes */
+        .route-card {
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s;
+            border: 1px solid #eee;
+        }
+        
+        .route-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .route-card .card-header {
+            background: var(--gradient-primary-light);
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Why Choose Us Section */
+        .feature-icon {
+            font-size: 2rem;
+            margin-right: 1rem;
+            color: #FF5722;
+        }
+        
+        /* Feature items spacing */
+        .feature-item {
+            margin-bottom: 1.5rem;
+            align-items: flex-start;
+        }
+        
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 3rem 0 4rem;
+                clip-path: ellipse(150% 100% at 50% 0%);
+            }
+            
+            .route-picker {
+                padding: 1.5rem;
+            }
+            
+            .feature-icon {
+                font-size: 1.5rem;
+            }
+            
+            .why-choose-us h2 {
+                margin-top: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar (Consistent with Admin) -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-bus me-2"></i>E-Terminus
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+            <a class="nav-link" href="#"><i class="fas fa-question-circle me-1"></i> Help</a>
+        </li>
+        <li class="nav-item dropdown">  <!-- Added dropdown for user login -->
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                <i class="fas fa-user me-1"></i> Account
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="public/login.html"><i class="fas fa-sign-in-alt me-2"></i>User Login</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="admin/login.html"><i class="fas fa-user-shield me-2"></i>Operator Login</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Image Background -->
+    <section class="hero-section">
+        <!-- Background Image -->
+        <img src="images/488600008_9580333192060608_5068584255812370775_n.jpg" alt="Bus traveling in Zambia" class="hero-bg">
+        
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h1 class="display-4 fw-bold mb-3">Book Zambian Buses Online</h1>
+                    <p class="lead mb-5">Secure your seat on trusted bus operators across the country</p>
+                    
+                    <!-- Route Picker - Updated with visible labels -->
+                    <div class="route-picker">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">From</label>
+                                <select class="form-select">
+                                    <option selected>Select City</option>
+                                    <option>Lusaka</option>
+                                    <option>Ndola</option>
+                                    <option>Livingstone</option>
+                                    <option>Kitwe</option>
+                                    <option>Kabwe</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">To</label>
+                                <select class="form-select">
+                                    <option selected>Select City</option>
+                                    <option>Livingstone</option>
+                                    <option>Lusaka</option>
+                                    <option>Ndola</option>
+                                    <option>Kabwe</option>
+                                    <option>Kitwe</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-eterminus w-100 py-3">
+                                    <i class="fas fa-search me-2"></i>Search
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Trust Badges -->
+                    <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
+                        <span class="trust-badge">
+                            <i class="fas fa-shield-alt me-2"></i>Verified Operators
+                        </span>
+                        <span class="trust-badge">
+                            <i class="fas fa-tag me-2"></i>Updates Bus Fares
+                        </span>
+                        
+                        <span class="trust-badge">
+                            <i class="fas fa-star me-2"></i>Ratings & Reviews
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Rest of your HTML remains unchanged -->
+    <!-- Popular Routes -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Popular Zambian Routes</h2>
+                <p class="text-muted">Book these frequently traveled routes instantly</p>
+            </div>
+            
+            <div class="row g-4">
+                <!-- Route 1 -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="route-card h-100">
+                        <div class="card-header text-center py-3">
+                            Lusaka → Livingstone
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="h4 text-danger mb-3">From ZMW 450</div>
+                            <p class="text-muted mb-4">
+                                <i class="fas fa-clock me-2"></i>Multiple departures daily
+                            </p>
+                            <button class="btn btn-sm btn-eterminus px-4">View Buses</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Route 2 -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="route-card h-100">
+                        <div class="card-header text-center py-3">
+                            Ndola → Lusaka
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="h4 text-danger mb-3">From ZMW 250</div>
+                            <p class="text-muted mb-4">
+                                <i class="fas fa-clock me-2"></i>Every 2 hours
+                            </p>
+                            <button class="btn btn-sm btn-eterminus px-4">View Buses</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Route 3 -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="route-card h-100">
+                        <div class="card-header text-center py-3">
+                            Kitwe → Lusaka
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="h4 text-danger mb-3">From ZMW 320</div>
+                            <p class="text-muted mb-4">
+                                <i class="fas fa-clock me-2"></i>Morning & evening
+                            </p>
+                            <button class="btn btn-sm btn-eterminus px-4">View Buses</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Route 4 -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="route-card h-100">
+                        <div class="card-header text-center py-3">
+                            Lusaka → Chipata
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="h4 text-danger mb-3">From ZMW 450</div>
+                            <p class="text-muted mb-4">
+                                <i class="fas fa-clock me-2"></i>2 daily trips
+                            </p>
+                            <button class="btn btn-sm btn-eterminus px-4">View Buses</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row align-items-center">
+                <!-- Images Column -->
+                <div class="col-lg-6 mb-4 mb-lg-0">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <img src="images/Lusaka Zambia.jpeg" alt="Bus in Lusaka" class="img-fluid rounded shadow">
+                        </div>
+                        <div class="col-md-4">
+                            <img src="images/Ndola.jpeg" alt="Bus in Ndola" class="img-fluid rounded shadow">
+                        </div>
+                        <div class="col-md-4">
+                            <img src="images/download (3).jpeg" alt="Bus in Zambia" class="img-fluid rounded shadow">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Content Column -->
+                <div class="col-lg-6">
+                    <h2 class="fw-bold mb-4">Why Book With E-Terminus?</h2>
+                    <div class="d-flex mb-4">
+                        <div class="me-4 text-danger">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-2">Verified Operators Only</h5>
+                            <p class="text-muted mb-0">All bus companies undergo strict safety and quality checks</p>
+                        </div>
+                    </div>
+                    <div class="d-flex mb-4">
+                        <div class="me-4 text-danger">
+                            <i class="fas fa-bolt fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-2">Instant E-Tickets</h5>
+                            <p class="text-muted mb-0">Receive mobile tickets immediately after payment</p>
+                        </div>
+                    </div>
+                    <div class="d-flex">
+                    <div class="d-flex mb-4">
+                       <div class="me-4 text-danger">
+                           <i class="fas fa-comment-alt fa-2x"></i>  <!-- Changed to comment icon -->
+                       </div>
+                       <div>
+                           <h5 class="mb-2">Leave Reviews and Feedback</h5>
+                           <p class="text-muted mb-0">Share your travel experience with our community</p>
+                       </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-4 bg-dark text-white">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-bus me-2"></i>E-Terminus</h5>
+                    <p>Zambia's trusted bus booking platform</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-white-50">About Us</a></li>
+                        <li><a href="#" class="text-white-50">Contact</a></li>
+                        <li><a href="admin/login.html" class="text-white-50">Operator Login</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Connect</h5>
+                    <a href="#" class="text-white-50 me-2"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="text-white-50 me-2"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="text-white-50"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+            <hr class="my-4 bg-secondary">
+            <div class="text-center">
+                <small class="text-white-50">© 2025 E-Terminus. All rights reserved.</small>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script>
+        // Set default date to tomorrow
+        document.addEventListener('DOMContentLoaded', function() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.querySelector('input[type="date"]').valueAsDate = tomorrow;
+            
+            // Add animation to route cards
+            const routeCards = document.querySelectorAll('.route-card');
+            routeCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = `all 0.5s ease ${index * 0.1}s`;
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

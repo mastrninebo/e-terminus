@@ -1,0 +1,48 @@
+        :root {
+            --gradient-primary: linear-gradient(135deg, #FF5722 0%, #C2185B 100%);
+            --gradient-primary-hover: linear-gradient(135deg, #E64A19 0%, #880E4F 100%);
+            --gradient-primary-light: linear-gradient(135deg, #FF8A65 0%, #E91E63 100%);
+        }
+        .sidebar {
+            min-height: 100vh;
+            background-color: #343a40;
+        }
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.75);
+        }
+        .sidebar .nav-link:hover {
+            color: white;
+            background-color: #495057;
+        }
+        .sidebar .nav-link.active {
+            color: white;
+            background: var(--gradient-primary);
+        }
+        .bg-gradient-primary {
+            background: var(--gradient-primary) !important;
+        }
+        .btn-gradient-primary {
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-gradient-primary:hover {
+            background: var(--gradient-primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .badge-gradient-primary {
+            background: var(--gradient-primary-light);
+            color: white;
+        }
+        .card-gradient-header {
+            background: var(--gradient-primary);
+            color: white;
+            border-bottom: none;
+        }
+        .modal-gradient-header {
+            background: var(--gradient-primary);
+            color: white;
+            border-bottom: none;
+        }

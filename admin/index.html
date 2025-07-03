@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Terminus | Admin Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --gradient-primary: linear-gradient(135deg, #FF5722 0%, #C2185B 100%);
+            --gradient-primary-hover: linear-gradient(135deg, #E64A19 0%, #880E4F 100%);
+            --gradient-primary-light: linear-gradient(135deg, #FF8A65 0%, #E91E63 100%);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 56px; /* For mobile header */
+        }
+        
+        /* Mobile Header */
+        .mobile-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: #343a40;
+            z-index: 1040;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+        }
+        
+        .mobile-header .brand {
+            color: white;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .mobile-header .menu-toggle {
+            color: white;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100vh;
+            background-color: #343a40;
+            z-index: 1050;
+            transition: all 0.3s;
+            overflow-y: auto;
+        }
+        
+        .sidebar.show {
+            left: 0;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.75);
+            border-radius: 5px;
+            margin: 2px 10px;
+            padding: 10px 15px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background: var(--gradient-primary);
+        }
+        
+        .sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 0;
+            padding: 1rem;
+            transition: all 0.3s;
+        }
+        
+        /* Desktop styles */
+        @media (min-width: 992px) {
+            body {
+                padding-top: 0;
+            }
+            .mobile-header {
+                display: none;
+            }
+            .sidebar {
+                left: 0;
+            }
+            .main-content {
+                margin-left: 250px;
+                padding: 1.5rem;
+            }
+        }
+
+        /* Shared Styles */
+        .bg-gradient-primary {
+            background: var(--gradient-primary) !important;
+        }
+        
+        .btn-gradient-primary {
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient-primary:hover {
+            background: var(--gradient-primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .badge-gradient-primary {
+            background: var(--gradient-primary-light);
+            color: white;
+        }
+        
+        .card-gradient-header {
+            background: var(--gradient-primary);
+            color: white;
+            border-bottom: none;
+        }
+        
+        .modal-gradient-header {
+            background: var(--gradient-primary);
+            color: white;
+            border-bottom: none;
+        }
+        
+        .stat-card {
+            border: none;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        }
+        
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Responsive Tables */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Compact table styling for mobile */
+        @media (max-width: 767.98px) {
+            table {
+                font-size: 0.85rem;
+            }
+            th, td {
+                padding: 0.5rem;
+            }
+            .btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.875rem;
+            }
+        }
+        
+        /* Adjust card layout on small screens */
+        @media (max-width: 575.98px) {
+            .row > [class^="col-"] {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+    <link rel="icon" href="images/logo.png" type="image/png">
+</head>
+<body>
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="menu-toggle" id="mobileMenuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="brand">E-Terminus Admin</div>
+    </header>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="text-center py-4">
+            <h4 class="text-white">E-Terminus Admin</h4>
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#dashboard" data-bs-toggle="tab">
+                    <i class="fas fa-tachometer-alt"></i>Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#trips" data-bs-toggle="tab">
+                    <i class="fas fa-bus"></i>Manage Trips
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#bookings" data-bs-toggle="tab">
+                    <i class="fas fa-ticket-alt"></i>Bookings
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#users" data-bs-toggle="tab">
+                    <i class="fas fa-users"></i>Users
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#reviews" data-bs-toggle="tab">
+                    <i class="fas fa-star"></i>Reviews
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#settings" data-bs-toggle="tab">
+                    <i class="fas fa-cog"></i>Settings
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="container-fluid">
+            <div class="tab-content">
+                <!-- Dashboard Tab -->
+                <div class="tab-pane fade show active" id="dashboard">
+                    <h2 class="mb-4">Dashboard Overview</h2>
+                    <div class="row">
+                        <div class="col-md-4 mb-4">
+                            <div class="card stat-card bg-gradient-primary text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-bus me-2"></i>Total Trips</h5>
+                                    <h2 class="card-text">42</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card stat-card bg-success text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-ticket-alt me-2"></i>Active Bookings</h5>
+                                    <h2 class="card-text">156</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card stat-card bg-warning text-dark">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-star me-2"></i>Pending Reviews</h5>
+                                    <h2 class="card-text">12</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header card-gradient-header">
+                            <i class="fas fa-history me-2"></i>Recent Bookings
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Booking ID</th>
+                                            <th>User</th>
+                                            <th>Trip</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>#ET-1001</td>
+                                            <td>john.doe@example.com</td>
+                                            <td>Lusaka to Livingstone</td>
+                                            <td>2025-05-15</td>
+                                            <td><span class="badge bg-success">Confirmed</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>#ET-1002</td>
+                                            <td>jane.smith@example.com</td>
+                                            <td>Ndola to Kitwe</td>
+                                            <td>2025-05-16</td>
+                                            <td><span class="badge bg-warning text-dark">Pending</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trips Tab -->
+                <div class="tab-pane fade" id="trips">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Manage Trips</h2>
+                        <button class="btn btn-gradient-primary" data-bs-toggle="modal" data-bs-target="#addTripModal">
+                            <i class="fas fa-plus me-1"></i> Add Trip
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Trip ID</th>
+                                            <th>Route</th>
+                                            <th>Departure</th>
+                                            <th>Seats</th>
+                                            <th>Price (ZMW)</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>TR-001</td>
+                                            <td>Lusaka to Livingstone</td>
+                                            <td>2025-05-15 08:00</td>
+                                            <td>32/40</td>
+                                            <td>250</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info action-btn"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-sm btn-danger action-btn"><i class="fas fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bookings Tab -->
+                <div class="tab-pane fade" id="bookings">
+                    <h2 class="mb-4">Manage Bookings</h2>
+                    <div class="card">
+                        <div class="card-header card-gradient-header">
+                            All Bookings
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Booking ID</th>
+                                            <th>User</th>
+                                            <th>Trip</th>
+                                            <th>Seats</th>
+                                            <th>Total (ZMW)</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>#ET-1001</td>
+                                            <td>john.doe@example.com</td>
+                                            <td>Lusaka to Livingstone</td>
+                                            <td>2</td>
+                                            <td>500</td>
+                                            <td><span class="badge bg-success">Confirmed</span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info action-btn"><i class="fas fa-eye"></i></button>
+                                                <button class="btn btn-sm btn-danger action-btn"><i class="fas fa-times"></i></button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Tab -->
+                <div class="tab-pane fade" id="users">
+                    <h2 class="mb-4">User Management</h2>
+                    <div class="card">
+                        <div class="card-header card-gradient-header">
+                            Registered Users
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>User ID</th>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>USR-001</td>
+                                            <td>John Doe</td>
+                                            <td>john.doe@example.com</td>
+                                            <td><span class="badge badge-gradient-primary">Customer</span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info action-btn"><i class="fas fa-edit"></i></button>
+                                                <button class="btn btn-sm btn-danger action-btn"><i class="fas fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Trip Modal -->
+    <div class="modal fade" id="addTripModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header modal-gradient-header">
+                    <h5 class="modal-title">Add New Trip</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Route</label>
+                            <input type="text" class="form-control" placeholder="e.g., Lusaka to Livingstone">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Departure Time</label>
+                            <input type="datetime-local" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Total Seats</label>
+                            <input type="number" class="form-control" value="40">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price (ZMW)</label>
+                            <input type="number" class="form-control" placeholder="250">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-gradient-primary">Save Trip</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & Popper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const mainContent = document.getElementById('mainContent');
+            
+            // Toggle sidebar on mobile
+            mobileToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+            });
+            
+            // Close sidebar when clicking on a nav link in mobile view
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 992) {
+                        sidebar.classList.remove('show');
+                    }
+                });
+            });
+            
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth < 992 && 
+                    !sidebar.contains(event.target) && 
+                    event.target !== mobileToggle && 
+                    !mobileToggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
