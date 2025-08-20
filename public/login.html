@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | E-Terminus</title>
-    <!-- Shared Resources -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link rel="icon" href="images/logo.png" type="image/png">
     <style>
         :root {
@@ -19,7 +19,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background: url('images/Beautiful bus.jpeg') no-repeat center center;
+            background: url('/images/Beautiful bus.jpeg') no-repeat center center fixed;
             background-size: cover;
             position: relative;
         }
@@ -37,16 +37,16 @@
         
         .navbar {
             background: var(--dark-bg) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
         .auth-card {
             border: none;
             border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 30px rgba(0,0,0,0.15);
             overflow: hidden;
-            background-color: rgba(255, 255, 255, 0.95);
-            max-width: 500px;
-            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(5px);
         }
         
         .auth-header {
@@ -79,44 +79,50 @@
             border-right: none;
         }
         
-        .forgot-password {
-            font-size: 0.9rem;
-            color: #C2185B;
-            text-decoration: none;
-        }
-        
-        .forgot-password:hover {
-            text-decoration: underline;
-        }
-        
         footer {
             margin-top: auto;
+            background: var(--dark-bg);
         }
         
-        /* Social login buttons */
-        .btn-outline-primary {
-            border-color: #FF5722;
+        .alert-position {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 350px;
+        }
+        
+        .password-toggle {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .password-toggle:hover {
             color: #FF5722;
         }
         
-        .btn-outline-primary:hover {
-            background-color: #FF5722;
-            color: white;
-        }
-        
-        .form-check-input:checked {
-            background-color: #FF5722;
-            border-color: #FF5722;
+        .rate-limit-notice {
+            font-size: 0.85rem;
+            color: #dc3545;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar (Consistent with Main Site) -->
+    <!-- Alert Container -->
+    <div id="alertContainer" class="alert-position"></div>
+
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="index.html">
+            <a class="navbar-brand" href="/">
                 <i class="fas fa-bus me-2"></i>E-Terminus
             </a>
+            <div class="d-flex">
+                <a href="/register.html" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-user-plus me-1"></i> Register
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -124,40 +130,46 @@
     <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6">
-                <div class="auth-card">
+                <div class="auth-card animate__animated animate__fadeIn">
                     <div class="auth-header">
                         <h3><i class="fas fa-sign-in-alt me-2"></i>Welcome Back</h3>
                     </div>
                     <div class="card-body p-4">
                         <form id="loginForm" novalidate>
-                            <!-- Email/Phone -->
+                            <!-- Email -->
                             <div class="mb-3">
-                                <label class="form-label">Email or Phone</label>
+                                <label for="loginEmail" class="form-label">Email Address</label>
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" class="form-control" required>
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" id="loginEmail" name="email" class="form-control" 
+                                           placeholder="john@example.com" required autocomplete="username">
                                 </div>
+                                <div class="invalid-feedback">Please enter a valid email address</div>
                             </div>
                             
                             <!-- Password -->
                             <div class="mb-3">
-                                <label class="form-label">Password</label>
+                                <label for="loginPassword" class="form-label">Password</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                    <input type="password" class="form-control" required>
-                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <input type="password" id="loginPassword" name="password" 
+                                           class="form-control" required autocomplete="current-password">
+                                    <button class="btn btn-outline-secondary password-toggle" type="button">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
-                                <div class="text-end mt-2">
-                                    <a href="forgot-password.html" class="forgot-password">Forgot password?</a>
+                                <div class="invalid-feedback">Please enter your password</div>
+                                <div class="d-flex justify-content-between mt-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="rememberMe">
+                                        <label class="form-check-label" for="rememberMe">Remember me</label>
+                                    </div>
+                                    <a href="/forgot-password.html" class="text-decoration-none">Forgot password?</a>
                                 </div>
-                            </div>
-                            
-                            <!-- Remember Me -->
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="rememberMe">
-                                <label class="form-check-label" for="rememberMe">Remember me</label>
+                                <div id="rateLimitNotice" class="rate-limit-notice mt-2">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    <span>Too many attempts. Try again in <span id="retryAfter">15</span> minutes.</span>
+                                </div>
                             </div>
                             
                             <!-- Submit -->
@@ -167,61 +179,44 @@
                                 </button>
                             </div>
                             
-                            <!-- Registration Link -->
-                            <div class="text-center mt-3">
-                                <p>New to E-Terminus? <a href="register.html">Create account</a></p>
+                            <!-- Social Login (optional) -->
+                            <div class="text-center mt-4">
+                                <p class="text-muted mb-3">Or login with</p>
+                                <div class="d-flex justify-content-center gap-3">
+                                    <a href="#" class="btn btn-outline-primary btn-sm">
+                                        <i class="fab fa-google me-1"></i> Google
+                                    </a>
+                                    <a href="#" class="btn btn-outline-primary btn-sm">
+                                        <i class="fab fa-facebook-f me-1"></i> Facebook
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <!-- Register Link -->
+                            <div class="text-center mt-4">
+                                <p>Don't have an account? <a href="http://localhost/e-terminus/public/register.html" class="fw-bold">Register here</a></p>
                             </div>
                         </form>
                     </div>
-                </div>
-                
-                <!-- Social Login -->
-                <div class="text-center mt-4">
-                    <p class="text-muted">Or continue with</p>
-                    <button class="btn btn-outline-primary me-2">
-                        <i class="fab fa-google me-2"></i>Google
-                    </button>
-                    <!--<button class="btn btn-outline-primary">
-                        <i class="fab fa-facebook-f me-2"></i>Facebook
-                    </button> -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer (Consistent with Main Site) -->
+    <!-- Footer -->
     <footer class="bg-dark text-white py-4 mt-5">
         <div class="container text-center">
             <p class="mb-0">© 2025 E-Terminus. All rights reserved.</p>
+            <div class="mt-2">
+                <a href="#" class="text-white mx-2"><i class="fas fa-shield-alt me-1"></i> Privacy</a>
+                <a href="#" class="text-white mx-2"><i class="fas fa-file-alt me-1"></i> Terms</a>
+                <a href="#" class="text-white mx-2"><i class="fas fa-question-circle me-1"></i> Help</a>
+            </div>
         </div>
     </footer>
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Password visibility toggle
-        document.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', function() {
-                const input = this.previousElementSibling;
-                const icon = this.querySelector('i');
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.classList.replace('fa-eye', 'fa-eye-slash');
-                } else {
-                    input.type = 'password';
-                    icon.classList.replace('fa-eye-slash', 'fa-eye');
-                }
-            });
-        });
-
-        // Form validation
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            if (!this.checkValidity()) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            this.classList.add('was-validated');
-        });
-    </script>
+    <script src="assets/js/login.js"></script>
 </body>
 </html>
