@@ -184,7 +184,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav ms-auto">
         <li class="nav-item">
-            <a class="nav-link" href="#"><i class="fas fa-question-circle me-1"></i> Help</a>
+            <!-- Reviews Button -->
+            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#reviewsModal">
+              <i class="fas fa-star me-1"></i> Reviews
+            </a>
         </li>
         <li class="nav-item dropdown">  <!-- Added dropdown for user login -->
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
@@ -453,5 +456,112 @@
             });
         });
     </script>
+   <!-- Reviews Modal -->
+<div class="modal fade" id="reviewsModal" tabindex="-1" aria-labelledby="reviewsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="reviewsModalLabel">
+          <i class="fas fa-star me-2"></i>Share Your Experience
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Authentication Alert -->
+        <div id="authAlert" class="alert alert-warning d-none">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          Please <a href="http://localhost/e-terminus/public/login.html" class="alert-link">login</a> to submit a review.
+        </div>
+        
+        <!-- Review Form (initially hidden) -->
+        <form id="reviewForm" class="d-none">
+          <!-- User Info -->
+          <div class="user-info bg-light p-3 rounded mb-4">
+            <div class="d-flex align-items-center">
+              <div class="flex-grow-1">
+                <h6 class="mb-1">Reviewing as: <span id="userName">Loading...</span></h6>
+                <small class="text-muted" id="userEmail"></small>
+              </div>
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="logout()">
+                <i class="fas fa-sign-out-alt me-1"></i>Not You?
+              </button>
+            </div>
+          </div>
+          
+          <!-- Review Type Selection -->
+          <div class="mb-4">
+            <label class="form-label fw-bold">What are you reviewing?</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="reviewType" id="reviewPlatform" value="platform" checked>
+              <label class="form-check-label" for="reviewPlatform">
+                <i class="fas fa-bus me-1"></i> E-Terminus Platform
+              </label>
+              <small class="text-muted d-block ms-4">Overall experience using our booking system</small>
+            </div>
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="radio" name="reviewType" id="reviewOperator" value="operator">
+              <label class="form-check-label" for="reviewOperator">
+                <i class="fas fa-building me-1"></i> Specific Bus Operator
+              </label>
+              <small class="text-muted d-block ms-4">Experience with a particular bus company</small>
+            </div>
+          </div>
+          
+          <!-- Operator Selection (Conditional) -->
+          <div id="operatorSection" class="mb-3 d-none">
+            <label for="operatorSelect" class="form-label fw-bold">Select Bus Operator</label>
+            <select class="form-select" id="operatorSelect" required>
+              <option value="">Choose a bus company...</option>
+              <!-- Dynamically loaded operators will appear here -->
+            </select>
+          </div>
+          
+          <!-- Rating -->
+          <div class="mb-4">
+            <label class="form-label fw-bold">Overall Rating</label>
+            <div class="rating-stars mb-2">
+              <div class="d-flex justify-content-center">
+                <i class="fas fa-star rating-star" data-value="1" style="font-size: 2rem; cursor: pointer; color: #ddd; margin: 0 5px;"></i>
+                <i class="fas fa-star rating-star" data-value="2" style="font-size: 2rem; cursor: pointer; color: #ddd; margin: 0 5px;"></i>
+                <i class="fas fa-star rating-star" data-value="3" style="font-size: 2rem; cursor: pointer; color: #ddd; margin: 0 5px;"></i>
+                <i class="fas fa-star rating-star" data-value="4" style="font-size: 2rem; cursor: pointer; color: #ddd; margin: 0 5px;"></i>
+                <i class="fas fa-star rating-star" data-value="5" style="font-size: 2rem; cursor: pointer; color: #ddd; margin: 0 5px;"></i>
+              </div>
+              <input type="hidden" id="ratingValue" name="rating" required>
+              <div class="text-center mt-2">
+                <small id="ratingText" class="text-muted">Select your rating</small>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Review Details -->
+          <div class="mb-3">
+            <label for="reviewTitle" class="form-label fw-bold">Review Title (Optional)</label>
+            <input type="text" class="form-control" id="reviewTitle" placeholder="Brief summary of your experience">
+          </div>
+          
+          <div class="mb-3">
+            <label for="reviewText" class="form-label fw-bold">Detailed Review</label>
+            <textarea class="form-control" id="reviewText" rows="4" 
+                      placeholder="Share your experience: punctuality, comfort, customer service, etc." required></textarea>
+          </div>
+          
+          <!-- Trip Reference (Optional) -->
+          <div class="mb-3">
+            <label for="tripReference" class="form-label">Trip Reference (Optional)</label>
+            <input type="text" class="form-control" id="tripReference" placeholder="Booking ID or trip details">
+          </div>
+          
+          <!-- Submit Button -->
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="fas fa-paper-plane me-2"></i>Submit Review
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
