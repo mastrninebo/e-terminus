@@ -1,0 +1,39 @@
+/* assets/css/navbar-scroll.css */
+/* Navbar scroll behavior */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    transition: transform 0.3s ease-in-out;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Class to hide navbar when scrolling down */
+.navbar-hidden {
+    transform: translateY(-100%);
+}
+
+/* Add padding to body to prevent content from being hidden under fixed navbar */
+body {
+    padding-top: 80px; /* Adjust based on your navbar height */
+}
+
+/* Add shadow when scrolled */
+.navbar-scrolled {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile adjustments */
+@media (max-width: 992px) {
+    body {
+        padding-top: 70px; /* Adjust for mobile navbar height */
+    }
+    
+    .navbar-collapse {
+        background-color: var(--dark-bg);
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin-top: 0.5rem;
+    }
+}
