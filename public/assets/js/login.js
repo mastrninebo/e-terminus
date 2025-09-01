@@ -37,16 +37,27 @@ class LoginSystem {
     
     async checkExistingSession() {
         try {
-            const response = await fetch('/api/auth/session', {
-                credentials: 'include'
+            const response = await fetch('http://localhost/e-terminus/api/auth/check_session.php', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
             
             if (response.ok) {
                 const data = await response.json();
-                this.redirectUser(data.user);
+                if (data.authenticated) {
+                    this.redirectUser(data.user);
+                } else {
+                    console.debug('Session check failed:', data.reason || 'Unknown reason');
+                }
+            } else {
+                const errorData = await response.json();
+                console.debug('Session check failed:', errorData);
             }
         } catch (error) {
-            console.debug('No active session found');
+            console.debug('Session check error:', error);
         }
     }
     
@@ -96,7 +107,7 @@ class LoginSystem {
         
         try {
             const response = await this.sendLoginRequest(formData);
-            this.handleLoginResponse(response);
+            this.handleLoginResponse(response, formData.email);
         } catch (error) {
             console.error('Login error:', error);
             this.showAlert('danger', error.message || 'Network error. Please try again.');
@@ -140,11 +151,11 @@ class LoginSystem {
         }
     }
     
-    handleLoginResponse(response) {
+    handleLoginResponse(response, email) {
         if (response.ok) {
             this.handleSuccessfulLogin(response.data);
         } else {
-            this.handleLoginError(response);
+            this.handleLoginError(response, email);
         }
     }
     
@@ -154,6 +165,9 @@ class LoginSystem {
             localStorage.setItem('auth_token', data.token);
         }
         
+        // Store user data in localStorage for immediate access
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        
         // Show success message
         this.showAlert('success', 'Login successful! Redirecting...', false);
         
@@ -162,17 +176,16 @@ class LoginSystem {
     }
     
     redirectUser(user) {
-        let redirectPath = '/';
+        const baseUrl = window.location.origin;
+        let redirectPath = `${baseUrl}/e-terminus/index.html`;
         
         // Custom redirect paths based on user type
         if (user.user_type === 'admin') {
-            redirectPath = '/admin/dashboard.html';
+            redirectPath = `${baseUrl}/e-terminus/admin/dashboard.html`;
         } else if (user.user_type === 'operator') {
-            redirectPath = '/operator/dashboard.html';
-        } else if (user.user_type === 'passenger') {
-            redirectPath = 'http://localhost/e-terminus/public/index.html';
+            redirectPath = `${baseUrl}/e-terminus/operator/dashboard.html`;
         }
-
+        // For 'passenger', it goes to the main index.html (default)
         
         // Small delay for UX
         setTimeout(() => {
@@ -180,7 +193,7 @@ class LoginSystem {
         }, 1500);
     }
     
-    handleLoginError(response) {
+    handleLoginError(response, email) {
         let errorMessage = 'Login failed. Please try again.';
         
         switch (response.status) {
@@ -193,7 +206,7 @@ class LoginSystem {
             case 403:
                 errorMessage = response.data?.error || 'Account not verified';
                 if (response.data?.error?.includes('verified')) {
-                    errorMessage += '<br><a href="/resend-verification" class="alert-link">Resend verification email</a>';
+                    errorMessage += '<br><a href="#" onclick="resendVerification(\'' + email + '\'); return false;" class="alert-link">Resend verification email</a>';
                 }
                 break;
             case 429:
@@ -219,7 +232,7 @@ class LoginSystem {
     
     showAlert(type, message, autoDismiss = true) {
         const alertContainer = document.getElementById('alertContainer');
-        const alertId = 'alert-' + Date.now();
+        const alertId = 'alert-' + Math.random().toString(36).substr(2, 9);
         
         const alertDiv = document.createElement('div');
         alertDiv.id = alertId;
@@ -238,17 +251,77 @@ class LoginSystem {
         // Auto-dismiss after 5 seconds if enabled
         if (autoDismiss) {
             setTimeout(() => {
-                const alertElement = document.getElementById(alertId);
-                if (alertElement) {
-                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
-                    bsAlert.close();
-                }
+                this.removeAlert(alertId);
             }, 5000);
+        }
+        
+        return alertId;
+    }
+    
+    removeAlert(alertId) {
+        const alertElement = document.getElementById(alertId);
+        if (alertElement) {
+            alertElement.classList.remove('show');
+            setTimeout(() => {
+                alertElement.remove();
+            }, 150);
+        }
+    }
+    
+    async resendVerification(email) {
+        if (!email) {
+            email = document.getElementById('loginEmail').value;
+        }
+        
+        if (!email) {
+            this.showAlert('warning', 'Please enter your email address first.');
+            return;
+        }
+        
+        try {
+            const loadingAlertId = this.showAlert('info', 'Sending verification email...', false);
+            
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                    email: email,
+                    action: 'resend_verification'
+                })
+            });
+            
+            const data = await response.json();
+            
+            this.removeAlert(loadingAlertId);
+            
+            setTimeout(() => {
+                if (data.success) {
+                    this.showAlert('success', data.message || 'Verification email has been resent.');
+                } else {
+                    this.showAlert('danger', data.error || 'Failed to resend verification email.');
+                }
+            }, 100);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            if (loadingAlertId) {
+                this.removeAlert(loadingAlertId);
+                setTimeout(() => {
+                    this.showAlert('danger', 'An error occurred. Please try again later.');
+                }, 100);
+            }
         }
     }
 }
 
 // Initialize when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new LoginSystem();
+    const loginSystem = new LoginSystem();
+    
+    // Make the resendVerification function globally accessible
+    window.resendVerification = (email) => loginSystem.resendVerification(email);
 });

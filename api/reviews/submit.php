@@ -1,10 +1,17 @@
 <?php
 // Handle review submission
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost'); // More restrictive
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Access-Control-Allow-Credentials: true');
+
+// Dynamic CORS handling (consistent with other files)
+$allowed_origins = ['http://localhost', 'http://localhost:3000', 'http://127.0.0.1'];
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+    header("Access-Control-Allow-Methods: POST, OPTIONS");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization");
+    header("Access-Control-Allow-Credentials: true");
+}
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -14,25 +21,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Use existing database connection
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/jwt-helper.php'; // Add JWT helper
 
 // Start session and check authentication
 session_start();
 
-// Check if user is authenticated
-if (!isset($_SESSION['user_id'])) {
-    // Alternatively, check for token in header for API authentication
-    $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? '';
+// Get token from Authorization header, cookie, or session (same as check_session.php)
+$token = null;
+
+// Check Authorization header first
+if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+    if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+        $token = $matches[1];
+    }
+}
+
+// If no header, check cookie
+if (!$token && isset($_COOKIE['auth_token'])) {
+    $token = $_COOKIE['auth_token'];
+}
+
+// If no cookie, check session
+if (!$token && isset($_SESSION['auth_token'])) {
+    $token = $_SESSION['auth_token'];
+}
+
+if (!$token) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Authentication required']);
+    exit();
+}
+
+// Verify JWT token and get user
+try {
+    $payload = JWTHelper::validateToken($token);
     
-    if (empty($authHeader) || !preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+    // Verify token exists in database and is not expired
+    $db = Database::getInstance();
+    $stmt = $db->prepare("
+        SELECT us.*, u.username, u.email, u.user_type 
+        FROM user_sessions us
+        JOIN users u ON us.user_id = u.user_id
+        WHERE us.jwt_token = ? AND us.expires_at > NOW()
+    ");
+    $stmt->execute([$token]);
+    $session = $stmt->fetch();
+    
+    if (!$session) {
         http_response_code(401);
-        echo json_encode(['error' => 'Authentication required']);
+        echo json_encode(['error' => 'Invalid or expired session']);
         exit();
     }
     
-    $token = $matches[1];
-    // Here you would validate the JWT token if using token-based auth
-    // For now, we'll rely on session-based auth
+    // Set user_id from the session
+    $user_id = $session['user_id'];
+    
+} catch (Exception $e) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Authentication failed']);
+    exit();
 }
 
 // Get POST data
@@ -78,14 +126,6 @@ if ($data['review_type'] === 'operator' && empty($data['operator_id'])) {
 }
 
 try {
-    // Get user_id from session (more secure than trusting client input)
-    $user_id = $_SESSION['user_id'] ?? null;
-    if (!$user_id) {
-        http_response_code(401);
-        echo json_encode(['error' => 'User not authenticated']);
-        exit();
-    }
-    
     $bus_id = null;
     $operator_id = null;
     
@@ -93,7 +133,7 @@ try {
         $operator_id = $data['operator_id'];
         
         // Verify operator exists
-        $stmt = $pdo->prepare("SELECT operator_id FROM operators WHERE operator_id = :operator_id AND status = 'active'");
+        $stmt = $db->prepare("SELECT operator_id FROM operators WHERE operator_id = :operator_id AND status = 'active'");
         $stmt->bindParam(':operator_id', $operator_id);
         $stmt->execute();
         
@@ -110,7 +150,7 @@ try {
             VALUES 
             (:user_id, :operator_id, :bus_id, :rating, :comment, :title, NOW(), :review_type)";
     
-    $stmt = $pdo->prepare($sql);
+    $stmt = $db->prepare($sql);
     
     // Bind parameters
     $stmt->bindParam(':user_id', $user_id);
@@ -126,7 +166,7 @@ try {
     
     // Execute query
     if ($stmt->execute()) {
-        $review_id = $pdo->lastInsertId();
+        $review_id = $db->lastInsertId();
         
         $response = [
             'success' => true,
@@ -145,4 +185,3 @@ try {
     http_response_code(500);
     echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
 }
-?>
