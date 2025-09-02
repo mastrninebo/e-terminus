@@ -4,10 +4,19 @@ class LoginSystem {
         this.apiUrl = 'http://localhost/e-terminus/api/auth/login.php';
         this.rateLimitNotice = document.getElementById('rateLimitNotice');
         this.retryAfterElement = document.getElementById('retryAfter');
+        this.emailInput = document.getElementById('loginEmail');
+        this.passwordInput = document.getElementById('loginPassword');
+        this.csrfTokenInput = document.getElementById('csrfToken');
+        
+        // Security tracking
+        this.failedAttempts = 0;
+        this.lastFailedAttempt = 0;
+        this.accountLockouts = new Map(); // Simulating account lockout tracking
         
         this.initEventListeners();
         this.checkExistingSession();
         this.checkRateLimited();
+        this.generateCSRFToken();
     }
     
     initEventListeners() {
@@ -19,20 +28,122 @@ class LoginSystem {
                 input.type = input.type === 'password' ? 'text' : 'password';
                 icon.classList.toggle('fa-eye-slash');
                 icon.classList.toggle('fa-eye');
+                
+                // Update aria-label for accessibility
+                const isVisible = input.type === 'text';
+                e.currentTarget.setAttribute('aria-label', 
+                    isVisible ? 'Hide password' : 'Show password');
             });
         });
         
         // Form submission
         this.loginForm.addEventListener('submit', (e) => this.handleSubmit(e));
         
-        // Demo account quick fill (remove in production)
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'd' && e.ctrlKey) {
-                document.getElementById('loginEmail').value = 'demo@eterminus.com';
-                document.getElementById('loginPassword').value = 'Demo@1234';
-                this.showAlert('info', 'Demo credentials filled', false);
+        // Input validation on blur
+        this.emailInput.addEventListener('blur', () => this.validateEmail());
+        this.passwordInput.addEventListener('blur', () => this.validatePassword());
+        
+        // Input validation on input (clear errors when user types)
+        this.emailInput.addEventListener('input', () => {
+            if (this.emailInput.classList.contains('is-invalid')) {
+                this.emailInput.classList.remove('is-invalid');
             }
         });
+        
+        this.passwordInput.addEventListener('input', () => {
+            if (this.passwordInput.classList.contains('is-invalid')) {
+                this.passwordInput.classList.remove('is-invalid');
+            }
+        });
+        
+        // Resend verification link
+        document.getElementById('resendVerificationLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.resendVerification();
+        });
+        
+        // Remove demo account quick fill for security
+    }
+    
+    generateCSRFToken() {
+        // Generate a simple CSRF token (in a real app, this should come from the server)
+        const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        this.csrfTokenInput.value = token;
+        sessionStorage.setItem('csrf_token', token);
+    }
+    
+    validateEmail() {
+        const email = this.emailInput.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!email) {
+            this.showFieldError(this.emailInput, 'Please enter your email address');
+            return false;
+        }
+        
+        if (!emailRegex.test(email)) {
+            this.showFieldError(this.emailInput, 'Please enter a valid email address');
+            return false;
+        }
+        
+        this.hideFieldError(this.emailInput);
+        return true;
+    }
+    
+    validatePassword() {
+        const password = this.passwordInput.value;
+        
+        if (!password) {
+            this.showFieldError(this.passwordInput, 'Please enter your password');
+            return false;
+        }
+        
+        // Generic error message to avoid giving hints
+        if (password.length < 8) {
+            this.showFieldError(this.passwordInput, 'Please check your credentials');
+            return false;
+        }
+        
+        this.hideFieldError(this.passwordInput);
+        return true;
+    }
+    
+    showFieldError(input, message) {
+        input.classList.add('is-invalid');
+        const validationElement = input.parentElement.nextElementSibling;
+        if (validationElement && validationElement.classList.contains('validation-feedback')) {
+            validationElement.textContent = message;
+            validationElement.style.display = 'block';
+        }
+    }
+    
+    hideFieldError(input) {
+        input.classList.remove('is-invalid');
+        const validationElement = input.parentElement.nextElementSibling;
+        if (validationElement && validationElement.classList.contains('validation-feedback')) {
+            validationElement.style.display = 'none';
+        }
+    }
+    
+    // Check if account is temporarily locked out
+    isAccountLocked(email) {
+        const lockoutKey = `lockout_${btoa(email)}`;
+        const lockoutUntil = localStorage.getItem(lockoutKey);
+        
+        if (lockoutUntil && new Date().getTime() < parseInt(lockoutUntil)) {
+            const minutesLeft = Math.ceil((parseInt(lockoutUntil) - new Date().getTime()) / 60000);
+            this.showAlert('warning', `Account temporarily locked. Try again in ${minutesLeft} minutes.`);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Lock account for a period
+    lockAccount(email, minutes = 15) {
+        const lockoutKey = `lockout_${btoa(email)}`;
+        const lockoutUntil = new Date().getTime() + (minutes * 60000);
+        localStorage.setItem(lockoutKey, lockoutUntil.toString());
     }
     
     async checkExistingSession() {
@@ -49,15 +160,10 @@ class LoginSystem {
                 const data = await response.json();
                 if (data.authenticated) {
                     this.redirectUser(data.user);
-                } else {
-                    console.debug('Session check failed:', data.reason || 'Unknown reason');
                 }
-            } else {
-                const errorData = await response.json();
-                console.debug('Session check failed:', errorData);
             }
         } catch (error) {
-            console.debug('Session check error:', error);
+            // Silent fail - user just needs to log in
         }
     }
     
@@ -93,16 +199,27 @@ class LoginSystem {
     async handleSubmit(event) {
         event.preventDefault();
         
-        // Validate form
-        if (!this.loginForm.checkValidity()) {
+        // Validate form fields
+        const isEmailValid = this.validateEmail();
+        const isPasswordValid = this.validatePassword();
+        
+        if (!isEmailValid || !isPasswordValid) {
             this.loginForm.classList.add('was-validated');
             return;
         }
         
+        const email = this.emailInput.value.trim();
+        
+        // Check if account is locked
+        if (this.isAccountLocked(email)) {
+            return;
+        }
+        
         const formData = {
-            email: document.getElementById('loginEmail').value.trim(),
-            password: document.getElementById('loginPassword').value,
-            remember: document.getElementById('rememberMe').checked
+            email: email,
+            password: this.passwordInput.value,
+            remember: document.getElementById('rememberMe').checked,
+            csrf_token: this.csrfTokenInput.value
         };
         
         try {
@@ -110,7 +227,7 @@ class LoginSystem {
             this.handleLoginResponse(response, formData.email);
         } catch (error) {
             console.error('Login error:', error);
-            this.showAlert('danger', error.message || 'Network error. Please try again.');
+            this.showAlert('danger', 'Authentication failed. Please try again.');
         }
     }
     
@@ -153,8 +270,11 @@ class LoginSystem {
     
     handleLoginResponse(response, email) {
         if (response.ok) {
+            // Reset failed attempts on successful login
+            this.failedAttempts = 0;
             this.handleSuccessfulLogin(response.data);
         } else {
+            this.failedAttempts++;
             this.handleLoginError(response, email);
         }
     }
@@ -185,7 +305,6 @@ class LoginSystem {
         } else if (user.user_type === 'operator') {
             redirectPath = `${baseUrl}/e-terminus/operator/dashboard.html`;
         }
-        // For 'passenger', it goes to the main index.html (default)
         
         // Small delay for UX
         setTimeout(() => {
@@ -194,19 +313,24 @@ class LoginSystem {
     }
     
     handleLoginError(response, email) {
-        let errorMessage = 'Login failed. Please try again.';
+        let errorMessage = 'Authentication failed. Please check your credentials.';
         
         switch (response.status) {
             case 400:
-                errorMessage = 'Invalid email or password format';
-                break;
             case 401:
-                errorMessage = 'Invalid email or password';
+                // Generic error message for security
+                errorMessage = 'Authentication failed. Please check your credentials.';
+                
+                // Implement account lockout after multiple failed attempts
+                if (this.failedAttempts >= 5) {
+                    this.lockAccount(email, 15);
+                    errorMessage = 'Too many failed attempts. Account temporarily locked.';
+                }
                 break;
             case 403:
                 errorMessage = response.data?.error || 'Account not verified';
                 if (response.data?.error?.includes('verified')) {
-                    errorMessage += '<br><a href="#" onclick="resendVerification(\'' + email + '\'); return false;" class="alert-link">Resend verification email</a>';
+                    errorMessage += '<br><a href="#" onclick="loginSystem.resendVerification(\'' + email + '\'); return false;" class="alert-link">Resend verification email</a>';
                 }
                 break;
             case 429:
@@ -270,7 +394,7 @@ class LoginSystem {
     
     async resendVerification(email) {
         if (!email) {
-            email = document.getElementById('loginEmail').value;
+            email = this.emailInput.value;
         }
         
         if (!email) {
@@ -278,19 +402,24 @@ class LoginSystem {
             return;
         }
         
+        // Validate email format
+        if (!this.validateEmail()) {
+            this.showAlert('warning', 'Please enter a valid email address.');
+            return;
+        }
+        
         try {
             const loadingAlertId = this.showAlert('info', 'Sending verification email...', false);
             
-            const response = await fetch(this.apiUrl, {
+            const response = await fetch('http://localhost/e-terminus/api/auth/resend_verification.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                credentials: 'include',
                 body: JSON.stringify({ 
                     email: email,
-                    action: 'resend_verification'
+                    csrf_token: this.csrfTokenInput.value
                 })
             });
             
@@ -298,30 +427,20 @@ class LoginSystem {
             
             this.removeAlert(loadingAlertId);
             
-            setTimeout(() => {
-                if (data.success) {
-                    this.showAlert('success', data.message || 'Verification email has been resent.');
-                } else {
-                    this.showAlert('danger', data.error || 'Failed to resend verification email.');
-                }
-            }, 100);
+            if (response.ok) {
+                this.showAlert('success', 'If this email is registered, a verification link has been sent.');
+            } else {
+                this.showAlert('info', 'If this email is registered, a verification link has been sent.');
+            }
             
         } catch (error) {
             console.error('Error:', error);
-            if (loadingAlertId) {
-                this.removeAlert(loadingAlertId);
-                setTimeout(() => {
-                    this.showAlert('danger', 'An error occurred. Please try again later.');
-                }, 100);
-            }
+            this.showAlert('info', 'If this email is registered, a verification link has been sent.');
         }
     }
 }
 
 // Initialize when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    const loginSystem = new LoginSystem();
-    
-    // Make the resendVerification function globally accessible
-    window.resendVerification = (email) => loginSystem.resendVerification(email);
+    window.loginSystem = new LoginSystem();
 });

@@ -534,51 +534,53 @@ class ReviewsCarousel {
 
     async loadReviews() {
         try {
-            // For now, using dummy data. Replace with API call later.
-            this.reviews = [
-                {
-                    id: 1,
-                    content: "E-Terminus made my travel experience seamless. The booking process was smooth and the buses were comfortable. Highly recommended!",
-                    author: "Sarah Mwape",
-                    rating: 5,
-                    avatar: "SM"
-                },
-                {
-                    id: 2,
-                    content: "Excellent service! The drivers are professional and the buses are always on time. I use E-Terminus for all my intercity travels.",
-                    author: "James Banda",
-                    rating: 5,
-                    avatar: "JB"
-                },
-                {
-                    id: 3,
-                    content: "Great platform with competitive prices. The customer support team is very responsive and helpful. Will definitely use again.",
-                    author: "Chisanga Phiri",
-                    rating: 4,
-                    avatar: "CP"
-                },
-                {
-                    id: 4,
-                    content: "The mobile app is user-friendly and the payment process is secure. I appreciate the real-time tracking feature.",
-                    author: "Grace Mulenga",
-                    rating: 5,
-                    avatar: "GM"
-                },
-                {
-                    id: 5,
-                    content: "Reliable and affordable. I've been using E-Terminus for 2 years now and never had any issues. Keep up the good work!",
-                    author: "David Kaunda",
-                    rating: 4,
-                    avatar: "DK"
-                }
-            ];
+            const response = await fetch(`${BASE_URL}/api/reviews/get_reviews.php`, {
+                method: 'GET',
+                credentials: 'include'
+            });
 
-            // Later, you can replace with API call:
-            // const response = await fetch(`${BASE_URL}/api/reviews/get_reviews.php`);
-            // this.reviews = await response.json();
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            this.reviews = data;
+            
+            // If no reviews found, show a message
+            if (this.reviews.length === 0) {
+                this.showNoReviewsMessage();
+            }
         } catch (error) {
             console.error('Failed to load reviews:', error);
+            this.showErrorMessage();
         }
+    }
+
+    showNoReviewsMessage() {
+        this.container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No reviews yet</h4>
+                <p class="text-muted">Be the first to share your experience!</p>
+            </div>
+        `;
+        this.indicatorsContainer.innerHTML = '';
+    }
+
+    showErrorMessage() {
+        this.container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h4 class="text-muted">Unable to load reviews</h4>
+                <p class="text-muted">Please try again later</p>
+            </div>
+        `;
+        this.indicatorsContainer.innerHTML = '';
     }
 
     renderReviews() {
@@ -593,12 +595,12 @@ class ReviewsCarousel {
             reviewCard.className = `review-card ${index === 0 ? 'active' : ''}`;
             reviewCard.innerHTML = `
                 <div class="review-content">
-                    ${review.content}
+                    ${this.escapeHtml(review.content)}
                 </div>
                 <div class="review-author">
-                    <div class="author-avatar">${review.avatar}</div>
+                    <div class="author-avatar">${this.generateAvatar(review.author)}</div>
                     <div class="author-info">
-                        <h5>${review.author}</h5>
+                        <h5>${this.escapeHtml(review.author)}</h5>
                         <div class="star-rating">
                             ${this.generateStars(review.rating)}
                         </div>
@@ -623,6 +625,20 @@ class ReviewsCarousel {
         return stars;
     }
 
+    generateAvatar(author) {
+        if (author) {
+            // Take first two letters, uppercase
+            return author.substring(0, 2).toUpperCase();
+        }
+        return 'GU'; // Guest User
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     setupEventListeners() {
         // Previous button
         document.getElementById('prevReview').addEventListener('click', () => {
@@ -642,14 +658,18 @@ class ReviewsCarousel {
     }
 
     nextSlide() {
+        if (this.reviews.length === 0) return;
         this.goToSlide((this.currentIndex + 1) % this.reviews.length);
     }
 
     prevSlide() {
+        if (this.reviews.length === 0) return;
         this.goToSlide((this.currentIndex - 1 + this.reviews.length) % this.reviews.length);
     }
 
     goToSlide(index) {
+        if (this.reviews.length === 0) return;
+        
         // Update current index
         this.currentIndex = index;
 
@@ -672,6 +692,8 @@ class ReviewsCarousel {
     }
 
     startAutoPlay() {
+        if (this.reviews.length <= 1) return; // Don't autoplay if only one or no reviews
+        
         this.stopAutoPlay();
         this.autoPlayInterval = setInterval(() => {
             this.nextSlide();

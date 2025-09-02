@@ -210,26 +210,29 @@
     color: #495057;
     margin-bottom: 1.5rem;
     position: relative;
+    padding: 0 2rem; /* Add padding to make space for quotes */
 }
 
 .review-content::before {
-    content: '"';
+    content: "\201C"; /* Left double quote */
     font-size: 4rem;
     color: #ffc107;
     position: absolute;
     top: -20px;
     left: -10px;
     font-family: Georgia, serif;
+    line-height: 1;
 }
 
 .review-content::after {
-    content: '"';
+    content: "\201D"; /* Right double quote */
     font-size: 4rem;
     color: #ffc107;
     position: absolute;
     bottom: -40px;
     right: -10px;
     font-family: Georgia, serif;
+    line-height: 1;
 }
 
 .review-author {
