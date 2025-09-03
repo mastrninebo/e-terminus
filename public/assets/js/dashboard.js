@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAuthStatus();
     setupEventListeners();
     loadDashboardData();
+    handleTabSwitching();
 });
 
 // Check if user is authenticated
@@ -108,7 +109,6 @@ function setupEventListeners() {
     const backHomeBtn = document.querySelector('.btn-outline-secondary');
     if (backHomeBtn && backHomeBtn.textContent.includes('Back to Home')) {
         // The button already has an href attribute, so no need to add a click listener
-        // unless you want to add additional functionality
     }
     
     // View ticket button
@@ -116,7 +116,12 @@ function setupEventListeners() {
         if (btn.textContent.includes('View Ticket')) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
-                showNotification('Ticket details would be shown here', 'info');
+                const bookingId = this.getAttribute('data-id');
+                if (bookingId) {
+                    viewTicketDetails(bookingId);
+                } else {
+                    showNotification('Ticket details would be shown here', 'info');
+                }
             });
         }
     });
@@ -126,7 +131,12 @@ function setupEventListeners() {
         if (btn.textContent.includes('Cancel')) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
-                if (confirm('Are you sure you want to cancel this booking?')) {
+                const bookingId = this.getAttribute('data-id');
+                if (bookingId) {
+                    if (confirm('Are you sure you want to cancel this booking?')) {
+                        cancelBooking(bookingId);
+                    }
+                } else {
                     showNotification('Booking cancelled successfully', 'success');
                 }
             });
@@ -138,7 +148,12 @@ function setupEventListeners() {
         if (btn.textContent.includes('Rate Trip')) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
-                window.location.href = `${BASE_URL}/index.html#reviewsModal`;
+                const bookingId = this.getAttribute('data-id');
+                if (bookingId) {
+                    window.location.href = `${BASE_URL}/public/review.html?booking_id=${bookingId}`;
+                } else {
+                    window.location.href = `${BASE_URL}/index.html#reviewsModal`;
+                }
             });
         }
     });
@@ -158,7 +173,7 @@ function setupEventListeners() {
                     bookingsTab.click();
                 }
             } else if (text.includes('Leave a Review')) {
-                window.location.href = `${BASE_URL}/index.html#reviewsModal`;
+                window.location.href = `${BASE_URL}/public/reviews.html`;
             }
         });
     });
@@ -172,7 +187,26 @@ function setupEventListeners() {
                 loadTripsData();
             } else if (target === '#bookings') {
                 loadBookingsData();
+            } else if (target === '#reviews') {
+                loadReviewsData();
+            } else if (target === '#settings') {
+                loadUserSettings();
+                setupSettingsForms();
             }
+        });
+    });
+}
+
+// Handle tab switching
+function handleTabSwitching() {
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    const navLinks = document.querySelectorAll('.nav-link');
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            const target = this.getAttribute('href');
+            tabPanes.forEach(pane => pane.classList.remove('show', 'active'));
+            document.querySelector(target).classList.add('show', 'active');
         });
     });
 }
@@ -182,6 +216,9 @@ async function loadDashboardData() {
     if (!currentUser) return;
     
     try {
+        // Show loading state
+        showLoadingState();
+        
         // Load user statistics
         await loadUserStats();
         
@@ -194,10 +231,51 @@ async function loadDashboardData() {
         // Load bookings data
         await loadBookingsData();
         
+        // Hide loading state
+        hideLoadingState();
+        
     } catch (error) {
         console.error('Error loading dashboard data:', error);
         showNotification('Error loading dashboard data', 'danger');
+        hideLoadingState();
     }
+}
+
+// Show loading state
+function showLoadingState() {
+    // Add loading indicators to stat cards
+    document.querySelectorAll('#dashboard .stat-card h2').forEach(el => {
+        el.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div>';
+    });
+    
+    // Add loading indicator to next trip section
+    const nextTripElement = document.querySelector('#dashboard .card.mb-4 .card-body .row');
+    if (nextTripElement) {
+        nextTripElement.innerHTML = `
+            <div class="col-12 text-center py-4">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Add loading indicator to recent activity
+    const activityContainer = document.querySelector('#dashboard .list-group');
+    if (activityContainer) {
+        activityContainer.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Hide loading state
+function hideLoadingState() {
+    // Loading indicators will be replaced by actual data
 }
 
 // Load user statistics
@@ -231,9 +309,18 @@ async function loadUserStats() {
             if (pendingReviewsElement && stats.pending_reviews !== undefined) {
                 pendingReviewsElement.textContent = stats.pending_reviews;
             }
+        } else {
+            // If API fails, use default values
+            document.querySelector('#dashboard .stat-card:first-child h2').textContent = '0';
+            document.querySelector('#dashboard .stat-card:nth-child(2) h2').textContent = '0';
+            document.querySelector('#dashboard .stat-card:last-child h2').textContent = '0';
         }
     } catch (error) {
         console.error('Error loading user stats:', error);
+        // If there's an error, use default values
+        document.querySelector('#dashboard .stat-card:first-child h2').textContent = '0';
+        document.querySelector('#dashboard .stat-card:nth-child(2) h2').textContent = '0';
+        document.querySelector('#dashboard .stat-card:last-child h2').textContent = '0';
     }
 }
 
@@ -252,42 +339,73 @@ async function loadUpcomingTrips() {
             const trips = await response.json();
             
             const nextTripElement = document.querySelector('#dashboard .card.mb-4 .card-body .row');
-            if (nextTripElement && trips.length > 0) {
-                const nextTrip = trips[0];
-                
-                nextTripElement.innerHTML = `
-                    <div class="col-md-6">
-                        <h4>${nextTrip.from_location} → ${nextTrip.to_location}</h4>
-                        <p class="mb-1"><i class="fas fa-calendar-alt me-2"></i>${formatDate(nextTrip.departure_date)}</p>
-                        <p class="mb-1"><i class="fas fa-clock me-2"></i>${nextTrip.departure_time}</p>
-                        <p class="mb-1"><i class="fas fa-bus me-2"></i>${nextTrip.operator_name}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex justify-content-between flex-wrap">
-                            <div class="mb-2 mb-md-0">
-                                <p class="mb-1"><i class="fas fa-ticket-alt me-2"></i>Ticket #${nextTrip.booking_id}</p>
-                            </div>
-                            <div class="text-md-end">
-                                <button class="btn btn-outline-primary view-ticket" data-id="${nextTrip.booking_id}">
-                                    <i class="fas fa-ticket-alt me-1"></i> View Ticket
-                                </button>
+            if (nextTripElement) {
+                if (trips.length > 0) {
+                    const nextTrip = trips[0];
+                    
+                    nextTripElement.innerHTML = `
+                        <div class="col-md-6">
+                            <h4>${nextTrip.from_location} → ${nextTrip.to_location}</h4>
+                            <p class="mb-1"><i class="fas fa-calendar-alt me-2"></i>${formatDate(nextTrip.departure_date)}</p>
+                            <p class="mb-1"><i class="fas fa-clock me-2"></i>${nextTrip.departure_time}</p>
+                            <p class="mb-1"><i class="fas fa-bus me-2"></i>${nextTrip.operator_name}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between flex-wrap">
+                                <div class="mb-2 mb-md-0">
+                                    <p class="mb-1"><i class="fas fa-ticket-alt me-2"></i>Ticket #${nextTrip.booking_id}</p>
+                                    ${nextTrip.seat_number ? `<p class="mb-1"><i class="fas fa-chair me-2"></i>Seat ${nextTrip.seat_number}</p>` : ''}
+                                </div>
+                                <div class="text-md-end">
+                                    <button class="btn btn-outline-primary view-ticket" data-id="${nextTrip.booking_id}">
+                                        <i class="fas fa-ticket-alt me-1"></i> View Ticket
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    `;
+                    
+                    // Add event listener to view ticket button
+                    const viewTicketBtn = nextTripElement.querySelector('.view-ticket');
+                    if (viewTicketBtn) {
+                        viewTicketBtn.addEventListener('click', function() {
+                            const bookingId = this.getAttribute('data-id');
+                            viewTicketDetails(bookingId);
+                        });
+                    }
+                } else {
+                    nextTripElement.innerHTML = `
+                        <div class="col-12 text-center py-4">
+                            <p class="text-muted">No upcoming trips found</p>
+                            <button class="btn btn-gradient-primary">
+                                <i class="fas fa-plus me-1"></i> Book a Trip
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            // Handle API error
+            const nextTripElement = document.querySelector('#dashboard .card.mb-4 .card-body .row');
+            if (nextTripElement) {
+                nextTripElement.innerHTML = `
+                    <div class="col-12 text-center py-4">
+                        <p class="text-muted">Unable to load trip data</p>
                     </div>
                 `;
-                
-                // Add event listener to view ticket button
-                const viewTicketBtn = nextTripElement.querySelector('.view-ticket');
-                if (viewTicketBtn) {
-                    viewTicketBtn.addEventListener('click', function() {
-                        const bookingId = this.getAttribute('data-id');
-                        showNotification(`Viewing ticket for booking #${bookingId}`, 'info');
-                    });
-                }
             }
         }
     } catch (error) {
         console.error('Error loading upcoming trips:', error);
+        // Handle error
+        const nextTripElement = document.querySelector('#dashboard .card.mb-4 .card-body .row');
+        if (nextTripElement) {
+            nextTripElement.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <p class="text-muted">Unable to load trip data</p>
+                </div>
+            `;
+        }
     }
 }
 
@@ -306,30 +424,57 @@ async function loadRecentActivity() {
             const activities = await response.json();
             const activityContainer = document.querySelector('#dashboard .list-group');
             
-            if (activityContainer && activities.length > 0) {
-                let activityHtml = '';
-                activities.forEach(activity => {
-                    const icon = getActivityIcon(activity.type);
-                    const timeAgo = getTimeAgo(activity.created_at);
-                    
-                    activityHtml += `
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="mb-1">${activity.title}</h6>
-                                    <small class="text-muted">${activity.description}</small>
+            if (activityContainer) {
+                if (activities.length > 0) {
+                    let activityHtml = '';
+                    activities.forEach(activity => {
+                        const icon = getActivityIcon(activity.type);
+                        const timeAgo = getTimeAgo(activity.created_at);
+                        
+                        activityHtml += `
+                            <a href="#" class="list-group-item list-group-item-action">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">${activity.title}</h6>
+                                        <small class="text-muted">${activity.description}</small>
+                                    </div>
+                                    <small>${timeAgo}</small>
                                 </div>
-                                <small>${timeAgo}</small>
-                            </div>
-                        </a>
+                            </a>
+                        `;
+                    });
+                    
+                    activityContainer.innerHTML = activityHtml;
+                } else {
+                    activityContainer.innerHTML = `
+                        <div class="text-center py-4">
+                            <p class="text-muted">No recent activity</p>
+                        </div>
                     `;
-                });
-                
-                activityContainer.innerHTML = activityHtml;
+                }
+            }
+        } else {
+            // Handle API error
+            const activityContainer = document.querySelector('#dashboard .list-group');
+            if (activityContainer) {
+                activityContainer.innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="text-muted">Unable to load activity data</p>
+                    </div>
+                `;
             }
         }
     } catch (error) {
         console.error('Error loading recent activity:', error);
+        // Handle error
+        const activityContainer = document.querySelector('#dashboard .list-group');
+        if (activityContainer) {
+            activityContainer.innerHTML = `
+                <div class="text-center py-4">
+                    <p class="text-muted">Unable to load activity data</p>
+                </div>
+            `;
+        }
     }
 }
 
@@ -348,46 +493,67 @@ async function loadBookingsData() {
             const bookings = await response.json();
             const bookingsTable = document.querySelector('#bookings table tbody');
             
-            if (bookingsTable && bookings.length > 0) {
-                let bookingsHtml = '';
-                bookings.forEach(booking => {
-                    const statusClass = getStatusClass(booking.status);
-                    const statusText = formatStatus(booking.status);
+            if (bookingsTable) {
+                if (bookings.length > 0) {
+                    let bookingsHtml = '';
+                    bookings.forEach(booking => {
+                        const statusClass = getStatusClass(booking.status);
+                        const statusText = formatStatus(booking.status);
+                        
+                        bookingsHtml += `
+                            <tr>
+                                <td>#${booking.booking_id}</td>
+                                <td>${booking.from_location} → ${booking.to_location}</td>
+                                <td>${formatDate(booking.booking_date)}</td>
+                                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary view-booking" data-id="${booking.booking_id}">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
                     
-                    bookingsHtml += `
+                    bookingsTable.innerHTML = bookingsHtml;
+                    
+                    // Add event listeners to view buttons
+                    document.querySelectorAll('.view-booking').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const bookingId = this.getAttribute('data-id');
+                            viewBookingDetails(bookingId);
+                        });
+                    });
+                } else {
+                    bookingsTable.innerHTML = `
                         <tr>
-                            <td>#${booking.booking_id}</td>
-                            <td>${booking.from_location} → ${booking.to_location}</td>
-                            <td>${formatDate(booking.booking_date)}</td>
-                            <td><span class="badge ${statusClass}">${statusText}</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary view-booking" data-id="${booking.booking_id}">
-                                    <i class="fas fa-eye"></i> View
-                                </button>
-                            </td>
+                            <td colspan="5" class="text-center py-3 text-muted">No bookings found</td>
                         </tr>
                     `;
-                });
-                
-                bookingsTable.innerHTML = bookingsHtml;
-                
-                // Add event listeners to view buttons
-                document.querySelectorAll('.view-booking').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const bookingId = this.getAttribute('data-id');
-                        showNotification(`Viewing details for booking #${bookingId}`, 'info');
-                    });
-                });
-            } else if (bookingsTable) {
+                }
+            }
+        } else {
+            // Handle API error
+            const bookingsTable = document.querySelector('#bookings table tbody');
+            if (bookingsTable) {
                 bookingsTable.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center py-3 text-muted">No bookings found</td>
+                        <td colspan="5" class="text-center py-3 text-muted">Unable to load bookings</td>
                     </tr>
                 `;
             }
         }
     } catch (error) {
         console.error('Error loading bookings data:', error);
+        // Handle error
+        const bookingsTable = document.querySelector('#bookings table tbody');
+        if (bookingsTable) {
+            bookingsTable.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-3 text-muted">Unable to load bookings</td>
+                </tr>
+            `;
+        }
     }
 }
 
@@ -488,7 +654,7 @@ async function loadTripsData() {
                         btn.addEventListener('click', function(e) {
                             e.preventDefault();
                             const bookingId = this.getAttribute('data-id');
-                            showNotification(`Redirecting to review form for booking #${bookingId}`, 'info');
+                            window.location.href = `${BASE_URL}/public/review.html?booking_id=${bookingId}`;
                         });
                     });
                 } else {
@@ -500,6 +666,307 @@ async function loadTripsData() {
         console.error('Error loading trips data:', error);
         showNotification('Error loading trips data', 'danger');
     }
+}
+
+// Load reviews data
+async function loadReviewsData() {
+    try {
+        // Load user reviews
+        const reviewsResponse = await fetch(`${BASE_URL}/api/user/get_reviews.php`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+            }
+        });
+        
+        if (reviewsResponse.ok) {
+            const reviews = await reviewsResponse.json();
+            const reviewsContainer = document.querySelector('#my-reviews .list-group');
+            
+            if (reviewsContainer) {
+                if (reviews.length > 0) {
+                    let reviewsHtml = '';
+                    reviews.forEach(review => {
+                        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                        
+                        reviewsHtml += `
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h5 class="mb-1">${review.operator_name} - ${review.from_location} to ${review.to_location}</h5>
+                                        <div class="text-warning mb-2">${stars}</div>
+                                        <p class="mb-1">${review.comment}</p>
+                                        <small class="text-muted">${formatDate(review.review_date)}</small>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-secondary edit-review" data-id="${review.review_id}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    reviewsContainer.innerHTML = reviewsHtml;
+                    
+                    // Add event listeners to edit buttons
+                    document.querySelectorAll('.edit-review').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const reviewId = this.getAttribute('data-id');
+                            showNotification(`Editing review #${reviewId}`, 'info');
+                        });
+                    });
+                } else {
+                    reviewsContainer.innerHTML = '<div class="text-center py-3 text-muted">No reviews yet</div>';
+                }
+            }
+        }
+        
+        // Load pending reviews
+        const pendingResponse = await fetch(`${BASE_URL}/api/user/get_pending_reviews.php`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+            }
+        });
+        
+        if (pendingResponse.ok) {
+            const pendingReviews = await pendingResponse.json();
+            const pendingContainer = document.querySelector('#pending-reviews .list-group');
+            
+            if (pendingContainer) {
+                if (pendingReviews.length > 0) {
+                    let pendingHtml = '';
+                    pendingReviews.forEach(trip => {
+                        pendingHtml += `
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-1">${trip.from_location} to ${trip.to_location}</h5>
+                                        <p class="mb-1">${trip.operator_name} - ${formatDate(trip.departure_date)}</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary rate-trip" data-id="${trip.booking_id}">
+                                        <i class="fas fa-star"></i> Rate Now
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    pendingContainer.innerHTML = pendingHtml;
+                    
+                    // Add event listeners to rate buttons
+                    document.querySelectorAll('.rate-trip').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const bookingId = this.getAttribute('data-id');
+                            window.location.href = `${BASE_URL}/public/review.html?booking_id=${bookingId}`;
+                        });
+                    });
+                } else {
+                    pendingContainer.innerHTML = '<div class="text-center py-3 text-muted">No pending reviews</div>';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading reviews data:', error);
+        showNotification('Error loading reviews data', 'danger');
+    }
+}
+
+// Load user settings
+async function loadUserSettings() {
+    try {
+        const response = await fetch(`${BASE_URL}/api/user/get_settings.php`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+            }
+        });
+        
+        if (response.ok) {
+            const settings = await response.json();
+            
+            // Update profile form
+            document.getElementById('firstName').value = settings.first_name || '';
+            document.getElementById('lastName').value = settings.last_name || '';
+            document.getElementById('username').value = settings.username || '';
+            document.getElementById('email').value = settings.email || '';
+            document.getElementById('phone').value = settings.phone || '';
+            document.getElementById('address').value = settings.address || '';
+            
+            // Update notification preferences
+            document.getElementById('emailNotifications').checked = settings.email_notifications !== false;
+            document.getElementById('smsNotifications').checked = settings.sms_notifications === true;
+            document.getElementById('promotionalNotifications').checked = settings.promotional_notifications !== false;
+            document.getElementById('tripReminders').checked = settings.trip_reminders !== false;
+        }
+    } catch (error) {
+        console.error('Error loading user settings:', error);
+        showNotification('Error loading user settings', 'danger');
+    }
+}
+
+// Setup settings form handlers
+function setupSettingsForms() {
+    // Profile form
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value
+            };
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/user/update_profile.php`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification('Profile updated successfully', 'success');
+                        // Update current user data
+                        currentUser = { ...currentUser, ...formData };
+                        updateUIForLoggedInUser();
+                    } else {
+                        showNotification(result.message || 'Failed to update profile', 'danger');
+                    }
+                } else {
+                    showNotification('Error updating profile', 'danger');
+                }
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                showNotification('Error updating profile', 'danger');
+            }
+        });
+    }
+    
+    // Security form
+    const securityForm = document.getElementById('securityForm');
+    if (securityForm) {
+        securityForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                showNotification('New passwords do not match', 'danger');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/user/change_password.php`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification('Password updated successfully', 'success');
+                        securityForm.reset();
+                    } else {
+                        showNotification(result.message || 'Failed to update password', 'danger');
+                    }
+                } else {
+                    showNotification('Error updating password', 'danger');
+                }
+            } catch (error) {
+                console.error('Error updating password:', error);
+                showNotification('Error updating password', 'danger');
+            }
+        });
+    }
+    
+    // Notifications form
+    const notificationsForm = document.getElementById('notificationsForm');
+    if (notificationsForm) {
+        notificationsForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const preferences = {
+                email_notifications: document.getElementById('emailNotifications').checked,
+                sms_notifications: document.getElementById('smsNotifications').checked,
+                promotional_notifications: document.getElementById('promotionalNotifications').checked,
+                trip_reminders: document.getElementById('tripReminders').checked
+            };
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/user/update_notifications.php`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+                    },
+                    body: JSON.stringify(preferences)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification('Notification preferences updated successfully', 'success');
+                    } else {
+                        showNotification(result.message || 'Failed to update preferences', 'danger');
+                    }
+                } else {
+                    showNotification('Error updating notification preferences', 'danger');
+                }
+            } catch (error) {
+                console.error('Error updating notification preferences:', error);
+                showNotification('Error updating notification preferences', 'danger');
+            }
+        });
+    }
+}
+
+// View ticket details
+function viewTicketDetails(bookingId) {
+    // In a real application, this would open a modal or navigate to a ticket details page
+    showNotification(`Loading ticket details for booking #${bookingId}`, 'info');
+    
+    // Simulate loading ticket details
+    setTimeout(() => {
+        showNotification('Ticket details loaded successfully', 'success');
+    }, 1000);
+}
+
+// View booking details
+function viewBookingDetails(bookingId) {
+    // In a real application, this would open a modal or navigate to a booking details page
+    showNotification(`Loading booking details for booking #${bookingId}`, 'info');
+    
+    // Simulate loading booking details
+    setTimeout(() => {
+        showNotification('Booking details loaded successfully', 'success');
+    }, 1000);
 }
 
 // Cancel a booking

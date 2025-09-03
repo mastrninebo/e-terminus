@@ -9,6 +9,7 @@
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/back-button.css">
+    <link rel="stylesheet" href="../../e-terminus/assets/css/navbar-scroll.css">
     <style>
         :root {
             --gradient-primary: linear-gradient(135deg, #FF5722 0%, #C2185B 100%);
@@ -382,6 +383,7 @@
                         </div>
                     </div>
                 </div>
+                
                 <!-- My Trips Tab -->
                 <div class="tab-pane fade" id="trips">
                     <div class="card">
@@ -435,6 +437,7 @@
                         </div>
                     </div>
                 </div>
+                
                 <!-- Bookings Tab -->
                 <div class="tab-pane fade" id="bookings">
                     <div class="card">
@@ -471,51 +474,145 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Reviews Tab -->
+                <div class="tab-pane fade" id="reviews">
+                    <div class="card">
+                        <div class="card-header card-gradient-header">
+                            <i class="fas fa-star me-2"></i>My Reviews
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="reviewsTab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="my-reviews-tab" data-bs-toggle="tab" data-bs-target="#my-reviews" type="button">My Reviews</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="pending-reviews-tab" data-bs-toggle="tab" data-bs-target="#pending-reviews" type="button">Pending Reviews</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content mt-3" id="reviewsTabContent">
+                                <div class="tab-pane fade show active" id="my-reviews">
+                                    <div class="list-group" id="myReviewsList">
+                                        <div class="text-center py-4">
+                                            <div class="spinner-border" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="pending-reviews">
+                                    <div class="list-group" id="pendingReviewsList">
+                                        <div class="text-center py-4">
+                                            <div class="spinner-border" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="settings">
+                    <div class="card">
+                        <div class="card-header card-gradient-header">
+                            <i class="fas fa-cog me-2"></i>Account Settings
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="settingsTab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button">Profile</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button">Security</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button">Notifications</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content mt-3" id="settingsTabContent">
+                                <div class="tab-pane fade show active" id="profile">
+                                    <form id="profileForm">
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="firstName" class="form-label">First Name</label>
+                                                <input type="text" class="form-control" id="firstName" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="lastName" class="form-label">Last Name</label>
+                                                <input type="text" class="form-control" id="lastName" required>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="username" class="form-label">Username</label>
+                                            <input type="text" class="form-control" id="username" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="email" class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="email" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="phone" class="form-label">Phone Number</label>
+                                            <input type="tel" class="form-control" id="phone">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="address" class="form-label">Address</label>
+                                            <textarea class="form-control" id="address" rows="2"></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-gradient-primary">Save Changes</button>
+                                    </form>
+                                </div>
+                                <div class="tab-pane fade" id="security">
+                                    <form id="securityForm">
+                                        <div class="mb-3">
+                                            <label for="currentPassword" class="form-label">Current Password</label>
+                                            <input type="password" class="form-control" id="currentPassword">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="newPassword" class="form-label">New Password</label>
+                                            <input type="password" class="form-control" id="newPassword">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                                            <input type="password" class="form-control" id="confirmPassword">
+                                        </div>
+                                        <button type="submit" class="btn btn-gradient-primary">Update Password</button>
+                                    </form>
+                                </div>
+                                <div class="tab-pane fade" id="notifications">
+                                    <form id="notificationsForm">
+                                        <div class="mb-3 form-check form-switch">
+                                            <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
+                                            <label class="form-check-label" for="emailNotifications">Email Notifications</label>
+                                        </div>
+                                        <div class="mb-3 form-check form-switch">
+                                            <input type="checkbox" class="form-check-input" id="smsNotifications">
+                                            <label class="form-check-label" for="smsNotifications">SMS Notifications</label>
+                                        </div>
+                                        <div class="mb-3 form-check form-switch">
+                                            <input type="checkbox" class="form-check-input" id="promotionalNotifications" checked>
+                                            <label class="form-check-label" for="promotionalNotifications">Promotional Notifications</label>
+                                        </div>
+                                        <div class="mb-3 form-check form-switch">
+                                            <input type="checkbox" class="form-check-input" id="tripReminders" checked>
+                                            <label class="form-check-label" for="tripReminders">Trip Reminders</label>
+                                        </div>
+                                        <button type="submit" class="btn btn-gradient-primary">Save Preferences</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     <!-- Bootstrap & Popper JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebar');
-            const mobileToggle = document.getElementById('mobileMenuToggle');
-            
-            // Toggle sidebar on mobile
-            mobileToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('show');
-            });
-            
-            // Close sidebar when clicking on a nav link in mobile view
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', function() {
-                    if (window.innerWidth < 992) {
-                        sidebar.classList.remove('show');
-                    }
-                });
-            });
-            
-            // Close sidebar when clicking outside on mobile
-            document.addEventListener('click', function(event) {
-                if (window.innerWidth < 992 && 
-                    !sidebar.contains(event.target) && 
-                    event.target !== mobileToggle && 
-                    !mobileToggle.contains(event.target)) {
-                    sidebar.classList.remove('show');
-                }
-            });
-            // Active tab persistence
-            const tabPanes = document.querySelectorAll('.tab-pane');
-            const navLinks = document.querySelectorAll('.nav-link');
-            
-            navLinks.forEach(link => {
-                link.addEventListener('click', function() {
-                    const target = this.getAttribute('href');
-                    tabPanes.forEach(pane => pane.classList.remove('show', 'active'));
-                    document.querySelector(target).classList.add('show', 'active');
-                });
-            });
-        });
-    </script>
+    <!-- Custom Dashboard JS -->
+    <script src="assets/js/dashboard.js"></script>
+    <script src="../../e-terminus/assets/js/navbar-scroll.js"></script>
 </body>
 </html>

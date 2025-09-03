@@ -125,6 +125,19 @@
         .invalid {
             color: #dc3545;
         }
+        
+        .validation-feedback {
+            display: none;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #dc3545;
+        }
+        
+        .was-validated .form-control:invalid ~ .validation-feedback,
+        .form-control.is-invalid ~ .validation-feedback {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -134,9 +147,14 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="index.html">
+            <a class="navbar-brand" href="http://localhost/e-terminus/index.html">
                 <i class="fas fa-bus me-2"></i>E-Terminus
             </a>
+            <div class="d-flex">
+                <a href="login.html" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-in-alt me-1"></i> Login
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -158,9 +176,10 @@
                                 <label for="username" class="form-label">Username</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" id="username" name="username" class="form-control" placeholder="johnbanda" required>
+                                    <input type="text" id="username" name="username" class="form-control" 
+                                           placeholder="johnbanda" required pattern="[a-zA-Z0-9_]{3,20}">
                                 </div>
-                                <div class="invalid-feedback">Please enter a username</div>
+                                <div class="validation-feedback">Please enter a username (3-20 characters, letters, numbers, and underscores only)</div>
                             </div>
                             
                             <!-- Email -->
@@ -168,9 +187,10 @@
                                 <label for="email" class="form-label">Email Address</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                    <input type="email" id="email" name="email" class="form-control" placeholder="john@example.com" required>
+                                    <input type="email" id="email" name="email" class="form-control" 
+                                           placeholder="john@example.com" required>
                                 </div>
-                                <div class="invalid-feedback">Please enter a valid email</div>
+                                <div class="validation-feedback">Please enter a valid email address</div>
                             </div>
                             
                             <!-- Phone -->
@@ -178,10 +198,11 @@
                                 <label for="phone" class="form-label">Zambian Phone Number</label>
                                 <div class="input-group">
                                     <span class="input-group-text">+260</span>
-                                    <input type="tel" id="phone" name="phone" class="form-control" placeholder="97XXXXXXX" pattern="[0-9]{9}" required>
+                                    <input type="tel" id="phone" name="phone" class="form-control" 
+                                           placeholder="97XXXXXXX" pattern="[0-9]{9}" required>
                                 </div>
                                 <small class="text-muted">Format: 97XXXXXXX (no spaces)</small>
-                                <div class="invalid-feedback">Please enter a valid Zambian number (9 digits)</div>
+                                <div class="validation-feedback">Please enter a valid Zambian number (9 digits)</div>
                             </div>
                             
                             <!-- Password -->
@@ -189,8 +210,10 @@
                                 <label for="password" class="form-label">Password</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                    <input type="password" id="password" name="password" class="form-control" minlength="8" required>
-                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <input type="password" id="password" name="password" class="form-control" 
+                                           minlength="8" required pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$">
+                                    <button class="btn btn-outline-secondary toggle-password" type="button"
+                                            aria-label="Toggle password visibility">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
@@ -200,20 +223,34 @@
                                     </div>
                                     <div class="password-requirements">
                                         <div class="requirement" id="length-req">
-                                            <i class="fas fa-circle"></i>
-                                            <span>At least 8 characters</span>
+                                            <i class="fas fa-circle invalid"></i>
+                                            <span class="invalid">At least 8 characters</span>
                                         </div>
                                         <div class="requirement" id="uppercase-req">
-                                            <i class="fas fa-circle"></i>
-                                            <span>At least 1 uppercase letter</span>
+                                            <i class="fas fa-circle invalid"></i>
+                                            <span class="invalid">At least 1 uppercase letter</span>
                                         </div>
                                         <div class="requirement" id="number-req">
-                                            <i class="fas fa-circle"></i>
-                                            <span>At least 1 number</span>
+                                            <i class="fas fa-circle invalid"></i>
+                                            <span class="invalid">At least 1 number</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="invalid-feedback">Password must meet all requirements</div>
+                                <div class="validation-feedback">Password must be at least 8 characters with at least one uppercase letter and one number</div>
+                            </div>
+
+                            <!-- Confirm Password -->
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button"
+                                            aria-label="Toggle password visibility">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="validation-feedback">Passwords do not match</div>
                             </div>
                             
                             <!-- Submit -->

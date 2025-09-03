@@ -24,6 +24,11 @@ class RegistrationSystem {
 
         // Form submission
         this.registerForm.addEventListener('submit', (e) => this.handleSubmit(e));
+        
+        // Real-time validation
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('blur', () => this.validateField(input));
+        });
     }
 
     async fetchCSRFToken() {
@@ -122,11 +127,79 @@ class RegistrationSystem {
         input.type = input.type === 'password' ? 'text' : 'password';
         icon.classList.toggle('fa-eye-slash');
         icon.classList.toggle('fa-eye');
+        
+        // Update aria-label for accessibility
+        const isVisible = input.type === 'text';
+        button.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+    }
+
+    validateField(input) {
+        input.classList.remove('is-invalid');
+        
+        if (!input.value) {
+            input.classList.add('is-invalid');
+            return false;
+        }
+        
+        if (input.id === 'email') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(input.value)) {
+                input.classList.add('is-invalid');
+                return false;
+            }
+        }
+        
+        if (input.id === 'phone') {
+            const phoneRegex = /^[0-9]{9}$/;
+            if (!phoneRegex.test(input.value)) {
+                input.classList.add('is-invalid');
+                return false;
+            }
+        }
+        
+        if (input.id === 'username') {
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            if (!usernameRegex.test(input.value)) {
+                input.classList.add('is-invalid');
+                return false;
+            }
+        }
+        
+        if (input.id === 'password') {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(input.value)) {
+                input.classList.add('is-invalid');
+                return false;
+            }
+        }
+
+        if (input.id === 'confirmPassword') {
+            const password = document.getElementById('password').value;
+            if (input.value !== password || !input.value) {
+                input.classList.add('is-invalid');
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     async handleSubmit(event) {
         event.preventDefault();
         console.log('[DEBUG] Form submission started');
+
+        // Validate all fields first
+        let isValid = true;
+        document.querySelectorAll('input').forEach(input => {
+            if (!this.validateField(input)) {
+                isValid = false;
+            }
+        });
+        
+        if (!isValid) {
+            this.showAlert('warning', 'Please fix the validation errors before submitting.');
+            return;
+        }
 
         // Disable submit button during processing
         const submitBtn = this.registerForm.querySelector('button[type="submit"]');
@@ -136,12 +209,6 @@ class RegistrationSystem {
         try {
             const formData = this.getFormData();
             console.log('[DEBUG] Form data:', formData);
-
-            // Client-side validation
-            if (!this.validateForm(formData)) {
-                console.warn('[DEBUG] Client-side validation failed');
-                return;
-            }
 
             const response = await this.sendRegistrationRequest(formData);
             console.log('[DEBUG] API Response:', response);
@@ -183,53 +250,6 @@ class RegistrationSystem {
         };
     }
 
-    validateForm(formData) {
-        const errors = {};
-        const password = formData.password;
-
-        if (!formData.username) errors.username = 'Username is required';
-        if (!formData.email.includes('@')) errors.email = 'Invalid email format';
-        if (formData.phone.length !== 12) errors.phone = 'Phone must be 9 digits after 260';
-        
-        // Password validation
-        if (password.length < 8) {
-            errors.password = 'Password must be at least 8 characters';
-        } else if (!/[A-Z]/.test(password)) {
-            errors.password = 'Password must contain at least one uppercase letter';
-        } else if (!/[0-9]/.test(password)) {
-            errors.password = 'Password must contain at least one number';
-        }
-
-        if (Object.keys(errors).length > 0) {
-            this.displayFieldErrors(errors);
-            return false;
-        }
-        return true;
-    }
-
-    displayFieldErrors(errors) {
-        // Clear previous errors
-        document.querySelectorAll('.is-invalid').forEach(el => {
-            el.classList.remove('is-invalid');
-        });
-        document.querySelectorAll('.invalid-feedback').forEach(el => {
-            el.textContent = '';
-        });
-
-        // Show new errors
-        for (const [field, message] of Object.entries(errors)) {
-            const input = document.getElementById(field);
-            if (input) {
-                input.classList.add('is-invalid');
-                const feedback = input.nextElementSibling;
-                if (feedback && feedback.classList.contains('invalid-feedback')) {
-                    feedback.textContent = message;
-                }
-            }
-            this.showAlert('danger', message);
-        }
-    }
-
     async sendRegistrationRequest(formData) {
         const response = await fetch(this.apiUrl, {
             method: 'POST',
@@ -250,6 +270,22 @@ class RegistrationSystem {
         }
 
         return data;
+    }
+
+    displayFieldErrors(errors) {
+        // Clear previous errors
+        document.querySelectorAll('.is-invalid').forEach(el => {
+            el.classList.remove('is-invalid');
+        });
+
+        // Show new errors
+        for (const [field, message] of Object.entries(errors)) {
+            const input = document.getElementById(field);
+            if (input) {
+                input.classList.add('is-invalid');
+            }
+            this.showAlert('danger', message);
+        }
     }
 
     showAlert(type, message, autoDismiss = true) {
@@ -284,6 +320,14 @@ class RegistrationSystem {
         this.registerForm.reset();
         this.progressBar.style.width = '0%';
         this.progressBar.className = 'progress-bar';
+        
+        // Reset password requirements
+        document.querySelectorAll('.requirement i').forEach(icon => {
+            icon.className = 'fas fa-circle invalid';
+        });
+        document.querySelectorAll('.requirement span').forEach(span => {
+            span.className = 'invalid';
+        });
     }
 
     handleRegistrationError(response) {
