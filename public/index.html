@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/back-button.css">
     <style>
         :root {
             --gradient-primary: linear-gradient(135deg, #FF5722 0%, #C2185B 100%);
@@ -107,7 +108,6 @@
                 padding: 1.5rem;
             }
         }
-
         /* Shared Styles */
         .bg-gradient-primary {
             background: var(--gradient-primary) !important;
@@ -215,7 +215,6 @@
         </button>
         <div class="brand">E-Terminus Passenger</div>
     </header>
-
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="text-center py-4">
@@ -254,12 +253,17 @@
             </li>
         </ul>
     </div>
-
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
         <div class="container-fluid">
+            <!-- Updated Dashboard Header with Back Button -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Dashboard Overview</h2>
+                <div class="d-flex align-items-center">
+                    <a href="http://localhost/e-terminus/index.html" class="btn btn-sm btn-outline-secondary me-3">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Home
+                    </a>
+                    <h2 class="mb-0">Dashboard Overview</h2>
+                </div>
                 <button class="btn btn-gradient-primary">
                     <i class="fas fa-plus me-1"></i> New Booking
                 </button>
@@ -378,7 +382,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- My Trips Tab -->
                 <div class="tab-pane fade" id="trips">
                     <div class="card">
@@ -432,7 +435,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Bookings Tab -->
                 <div class="tab-pane fade" id="bookings">
                     <div class="card">
@@ -472,7 +474,6 @@
             </div>
         </div>
     </div>
-
     <!-- Bootstrap & Popper JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -503,7 +504,6 @@
                     sidebar.classList.remove('show');
                 }
             });
-
             // Active tab persistence
             const tabPanes = document.querySelectorAll('.tab-pane');
             const navLinks = document.querySelectorAll('.nav-link');

@@ -163,14 +163,21 @@ function updateUIForLoggedInUser() {
     $('#loggedInMenu').removeClass('d-none');
     $('#notLoggedInMenu').addClass('d-none');
     
-    // Set dashboard URL based on user type
-    let dashboardUrl = '/e-terminus/index.html'; // Default for passengers
+    // Set dashboard URL and text based on user type
+    let dashboardUrl, dashboardText;
     if (currentUser.user_type === 'admin') {
         dashboardUrl = '/e-terminus/admin/dashboard.html';
+        dashboardText = 'Admin Dashboard';
     } else if (currentUser.user_type === 'operator') {
         dashboardUrl = '/e-terminus/operator/dashboard.html';
+        dashboardText = 'Operator Dashboard';
+    } else {
+        // For passengers, redirect to public dashboard page
+        dashboardUrl = '/e-terminus/public/index.html';
+        dashboardText = 'Dashboard';
     }
     $('#dashboardLink').attr('href', dashboardUrl);
+    $('#dashboardLink').html(`<i class="fas fa-tachometer-alt me-2"></i>${dashboardText}`);
     
     // Set profile URL
     $('#profileLink').attr('href', `/e-terminus/profile.html?user_id=${currentUser.user_id}`);
@@ -524,31 +531,26 @@ class ReviewsCarousel {
         this.autoPlayInterval = null;
         this.init();
     }
-
     async init() {
         await this.loadReviews();
         this.renderReviews();
         this.setupEventListeners();
         this.startAutoPlay();
     }
-
     async loadReviews() {
         try {
             const response = await fetch(`${BASE_URL}/api/reviews/get_reviews.php`, {
                 method: 'GET',
                 credentials: 'include'
             });
-
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-
             const data = await response.json();
             
             if (data.error) {
                 throw new Error(data.error);
             }
-
             this.reviews = data;
             
             // If no reviews found, show a message
@@ -560,7 +562,6 @@ class ReviewsCarousel {
             this.showErrorMessage();
         }
     }
-
     showNoReviewsMessage() {
         this.container.innerHTML = `
             <div class="text-center py-5">
@@ -571,7 +572,6 @@ class ReviewsCarousel {
         `;
         this.indicatorsContainer.innerHTML = '';
     }
-
     showErrorMessage() {
         this.container.innerHTML = `
             <div class="text-center py-5">
@@ -582,12 +582,10 @@ class ReviewsCarousel {
         `;
         this.indicatorsContainer.innerHTML = '';
     }
-
     renderReviews() {
         // Clear container
         this.container.innerHTML = '';
         this.indicatorsContainer.innerHTML = '';
-
         // Create review cards
         this.reviews.forEach((review, index) => {
             // Create review card
@@ -608,7 +606,6 @@ class ReviewsCarousel {
                 </div>
             `;
             this.container.appendChild(reviewCard);
-
             // Create indicator
             const indicator = document.createElement('span');
             indicator.className = `indicator ${index === 0 ? 'active' : ''}`;
@@ -616,7 +613,6 @@ class ReviewsCarousel {
             this.indicatorsContainer.appendChild(indicator);
         });
     }
-
     generateStars(rating) {
         let stars = '';
         for (let i = 1; i <= 5; i++) {
@@ -624,7 +620,6 @@ class ReviewsCarousel {
         }
         return stars;
     }
-
     generateAvatar(author) {
         if (author) {
             // Take first two letters, uppercase
@@ -632,47 +627,39 @@ class ReviewsCarousel {
         }
         return 'GU'; // Guest User
     }
-
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-
     setupEventListeners() {
         // Previous button
         document.getElementById('prevReview').addEventListener('click', () => {
             this.prevSlide();
             this.resetAutoPlay();
         });
-
         // Next button
         document.getElementById('nextReview').addEventListener('click', () => {
             this.nextSlide();
             this.resetAutoPlay();
         });
-
         // Pause on hover
         this.container.addEventListener('mouseenter', () => this.stopAutoPlay());
         this.container.addEventListener('mouseleave', () => this.startAutoPlay());
     }
-
     nextSlide() {
         if (this.reviews.length === 0) return;
         this.goToSlide((this.currentIndex + 1) % this.reviews.length);
     }
-
     prevSlide() {
         if (this.reviews.length === 0) return;
         this.goToSlide((this.currentIndex - 1 + this.reviews.length) % this.reviews.length);
     }
-
     goToSlide(index) {
         if (this.reviews.length === 0) return;
         
         // Update current index
         this.currentIndex = index;
-
         // Update cards
         const cards = this.container.querySelectorAll('.review-card');
         cards.forEach((card, i) => {
@@ -683,14 +670,12 @@ class ReviewsCarousel {
                 card.classList.add('prev');
             }
         });
-
         // Update indicators
         const indicators = this.indicatorsContainer.querySelectorAll('.indicator');
         indicators.forEach((indicator, i) => {
             indicator.classList.toggle('active', i === index);
         });
     }
-
     startAutoPlay() {
         if (this.reviews.length <= 1) return; // Don't autoplay if only one or no reviews
         
@@ -699,20 +684,17 @@ class ReviewsCarousel {
             this.nextSlide();
         }, 5000);
     }
-
     stopAutoPlay() {
         if (this.autoPlayInterval) {
             clearInterval(this.autoPlayInterval);
             this.autoPlayInterval = null;
         }
     }
-
     resetAutoPlay() {
         this.stopAutoPlay();
         this.startAutoPlay();
     }
 }
-
 // Initialize reviews carousel when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     new ReviewsCarousel();

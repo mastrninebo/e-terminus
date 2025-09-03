@@ -1,0 +1,62 @@
+/* Back to Home Button */
+.dashboard-header .btn-outline-secondary {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.dashboard-header .btn-outline-secondary:hover {
+    background-color: rgba(108, 117, 125, 0.1);
+    border-color: #5a6268;
+    color: #5a6268;
+    transform: translateY(-2px);
+}
+
+.dashboard-header .btn-outline-secondary:focus {
+    box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.25);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .dashboard-header .btn-outline-secondary {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+    
+    .dashboard-header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .dashboard-header .d-flex {
+        flex-wrap: wrap;
+    }
+    
+    .dashboard-header .d-flex > div {
+        margin-bottom: 10px;
+    }
+}
+
+/* For very small screens */
+@media (max-width: 575.98px) {
+    .dashboard-header .btn-outline-secondary {
+        margin-bottom: 10px;
+    }
+    
+    .dashboard-header .d-flex.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .dashboard-header .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    
+    .dashboard-header .btn-gradient-primary {
+        margin-top: 10px;
+        width: 100%;
+    }
+}
