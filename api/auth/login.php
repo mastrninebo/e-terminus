@@ -1,44 +1,36 @@
 <?php
 header('Content-Type: application/json; charset=UTF-8');
-
 // Dynamic CORS handling
 $allowed_origins = ['http://localhost', 'http://localhost:3000', 'http://127.0.0.1'];
 $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
-
 if (in_array($origin, $allowed_origins)) {
     header("Access-Control-Allow-Origin: $origin");
     header("Access-Control-Allow-Methods: POST, OPTIONS");
     header("Access-Control-Allow-Headers: Content-Type, Authorization");
     header("Access-Control-Allow-Credentials: true");
 }
-
 // Handle preflight request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit();
 }
-
 session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../vendor/autoload.php'; // Composer autoloader
 require_once __DIR__ . '/../../includes/EmailService.php'; // Email service
 require_once __DIR__ . '/../../includes/jwt-helper.php'; // JWT helper
-
 // Enable error logging (development only)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
-
 // Get input (JSON or form POST)
 $raw_input = file_get_contents('php://input');
 $input = json_decode($raw_input, true);
-
 // Fallback to $_POST if JSON is empty or invalid
 if (json_last_error() !== JSON_ERROR_NONE || empty($input)) {
     if (!empty($_POST)) {
         $input = $_POST;
     }
 }
-
 // Check if this is a resend verification request
 if (isset($input['action']) && $input['action'] === 'resend_verification') {
     // Handle resend verification logic
@@ -121,22 +113,24 @@ if (isset($input['action']) && $input['action'] === 'resend_verification') {
     }
     exit(); // Exit after handling resend verification
 }
-
 // If not a resend verification request, continue with normal login process
 // Validate input for normal login
-if (empty($input['email']) || empty($input['password'])) {
+if (empty($input['email']) && empty($input['username'])) {
     http_response_code(400);
-    echo json_encode(['error' => 'Email and password are required']);
+    echo json_encode(['error' => 'Email or username is required']);
     exit();
 }
-
+if (empty($input['password'])) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Password is required']);
+    exit();
+}
 // Rate limiting with IP-based key
 $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 $rateLimitKey = 'login_attempts_' . md5($clientIp);
 if (!isset($_SESSION[$rateLimitKey])) {
     $_SESSION[$rateLimitKey] = ['count' => 0, 'last_attempt' => time()];
 }
-
 // Check rate limiting
 if ($_SESSION[$rateLimitKey]['count'] >= 5) {
     $retryAfter = 900 - (time() - $_SESSION[$rateLimitKey]['last_attempt']);
@@ -153,19 +147,20 @@ if ($_SESSION[$rateLimitKey]['count'] >= 5) {
         $_SESSION[$rateLimitKey] = ['count' => 0, 'last_attempt' => time()];
     }
 }
-
 try {
     $db = Database::getInstance();
     
     // Get user with login attempts tracking - UPDATED with account_locked
+    $loginField = filter_var($input['email'] ?? $input['username'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+    
     $stmt = $db->prepare("
         SELECT user_id, username, email, password_hash, user_type, 
                is_verified, account_locked, login_attempts, last_login
         FROM users 
-        WHERE email = ? OR username = ?
+        WHERE {$loginField} = ?
         LIMIT 1
     ");
-    $stmt->execute([$input['email'], $input['email']]);
+    $stmt->execute([$input['email'] ?? $input['username']]);
     $user = $stmt->fetch();
     
     // Check if account exists and is locked
@@ -274,6 +269,9 @@ try {
     
     setcookie('auth_token', $token, $cookieParams);
     
+    // Check if user is admin for redirect information
+    $isAdmin = ($user['user_type'] === 'admin');
+    
     // Return success response
     echo json_encode([
         'success' => true,
@@ -282,8 +280,10 @@ try {
             'id' => $user['user_id'],
             'username' => $user['username'],
             'email' => $user['email'],
-            'user_type' => $user['user_type']
-        ]
+            'user_type' => $user['user_type'],
+            'is_admin' => $isAdmin
+        ],
+        'redirect' => $isAdmin ? '/public/admin/dashboard.php' : '/public/dashboard.html'
     ]);
     
 } catch (PDOException $e) {
