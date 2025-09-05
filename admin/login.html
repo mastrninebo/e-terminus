@@ -223,7 +223,7 @@
                     // Check if user is admin
                     if (data.user.user_type === 'admin' || data.user.is_admin) {
                         // Redirect to admin dashboard
-                        window.location.href = 'index.html';
+                        window.location.href = 'dashboard.html'; // Updated to new filename
                     } else {
                         // Not an admin
                         showAlert('You do not have admin privileges');
@@ -263,7 +263,7 @@
                     const data = await response.json();
                     if (data.authenticated && data.user && (data.user.user_type === 'admin' || data.user.is_admin)) {
                         // Already logged in as admin, redirect to dashboard
-                        window.location.href = 'index.html';
+                        window.location.href = 'dashboard.html';
                     }
                 }
             } catch (error) {
