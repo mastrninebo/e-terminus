@@ -1,5 +1,6 @@
 const BASE_URL = window.location.origin + '/e-terminus';
 let currentUser = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     checkAdminAuthStatus();
     setupEventListeners();
@@ -523,14 +524,35 @@ async function loadOperatorsData() {
             if (operatorsTable && operators.length > 0) {
                 let operatorsHtml = '';
                 operators.forEach(operator => {
+                    // Determine verification status badge class
+                    let verificationBadgeClass = 'warning text-dark';
+                    let verificationText = 'Pending';
+                    
+                    if (operator.verification_status === 'verified') {
+                        verificationBadgeClass = 'success';
+                        verificationText = 'Verified';
+                    } else if (operator.verification_status === 'rejected') {
+                        verificationBadgeClass = 'danger';
+                        verificationText = 'Rejected';
+                    }
+                    
                     operatorsHtml += `
                         <tr>
-                            <td>${operator.operator_id}</td>
+                            <td><strong>${operator.operator_code || operator.operator_id}</strong></td>
                             <td>${operator.company_name}</td>
                             <td>${operator.contact_person || 'N/A'}</td>
                             <td>${operator.email}</td>
                             <td><span class="badge bg-${operator.status === 'active' ? 'success' : 'danger'}">${operator.status}</span></td>
+                            <td><span class="badge bg-${verificationBadgeClass}">${verificationText}</span></td>
                             <td>
+                                ${operator.verification_status === 'pending' ? `
+                                    <button class="btn btn-sm btn-success action-btn verify-operator" data-id="${operator.operator_id}" title="Verify">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger action-btn reject-operator" data-id="${operator.operator_id}" title="Reject">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                ` : ''}
                                 <button class="btn btn-sm btn-info action-btn edit-operator" data-id="${operator.operator_id}" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -543,6 +565,21 @@ async function loadOperatorsData() {
                 });
                 
                 operatorsTable.innerHTML = operatorsHtml;
+                
+                // Add event listeners to verify/reject buttons
+                document.querySelectorAll('.verify-operator').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const operatorId = this.getAttribute('data-id');
+                        verifyOperator(operatorId);
+                    });
+                });
+                
+                document.querySelectorAll('.reject-operator').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const operatorId = this.getAttribute('data-id');
+                        rejectOperator(operatorId);
+                    });
+                });
                 
                 // Add event listeners to edit/delete buttons
                 document.querySelectorAll('.edit-operator').forEach(button => {
@@ -562,7 +599,7 @@ async function loadOperatorsData() {
             } else if (operatorsTable) {
                 operatorsTable.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center text-muted">No operators found</td>
+                        <td colspan="7" class="text-center text-muted">No operators found</td>
                     </tr>
                 `;
             }
@@ -1063,7 +1100,6 @@ async function saveOperator() {
             confirmPassword: document.getElementById('operatorConfirmPassword').value,
             phone: document.getElementById('operatorPhone').value,
             companyName: document.getElementById('companyName').value,
-            licenseNumber: document.getElementById('licenseNumber').value,
             contactPerson: document.getElementById('contactPerson').value,
             status: document.getElementById('operatorStatus').value
         };
@@ -1080,7 +1116,7 @@ async function saveOperator() {
         
         if (response.ok) {
             const result = await response.json();
-            showNotification('Operator created successfully', 'success');
+            showNotification(`Operator created successfully with code: ${result.operator_code}`, 'success');
             
             // Close modal and reset form
             const modal = bootstrap.Modal.getInstance(document.getElementById('addOperatorModal'));
@@ -1122,10 +1158,11 @@ async function editOperator(operatorId) {
             if (operator) {
                 // Populate the edit form
                 document.getElementById('editOperatorId').value = operator.operator_id;
+                document.getElementById('editOperatorCode').value = operator.operator_code || '';
                 document.getElementById('editCompanyName').value = operator.company_name;
-                document.getElementById('editLicenseNumber').value = operator.license_number || '';
                 document.getElementById('editContactPerson').value = operator.contact_person || '';
                 document.getElementById('editOperatorStatus').value = operator.status;
+                document.getElementById('editOperatorVerificationStatus').value = operator.verification_status || 'pending';
                 
                 // Show the edit modal
                 const modal = new bootstrap.Modal(document.getElementById('editOperatorModal'));
@@ -1151,9 +1188,9 @@ async function updateOperator() {
         
         const operatorData = {
             companyName: document.getElementById('editCompanyName').value,
-            licenseNumber: document.getElementById('editLicenseNumber').value,
             contactPerson: document.getElementById('editContactPerson').value,
-            status: document.getElementById('editOperatorStatus').value
+            status: document.getElementById('editOperatorStatus').value,
+            verificationStatus: document.getElementById('editOperatorVerificationStatus').value
         };
         
         const response = await fetch(`${BASE_URL}/api/admin/update_operator.php?operator_id=${operatorId}`, {
@@ -1221,6 +1258,102 @@ async function deleteOperator(operatorId) {
         } catch (error) {
             console.error('Error deleting operator:', error);
             showNotification('Error deleting operator: ' + error.message, 'danger');
+        } finally {
+            // Hide the confirmation modal
+            confirmationModal.hide();
+        }
+    });
+    
+    // Show the confirmation modal
+    confirmationModal.show();
+}
+
+// Verify operator function
+async function verifyOperator(operatorId) {
+    // Show custom confirmation modal
+    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    const confirmationMessage = document.getElementById('confirmationMessage');
+    const confirmButton = document.getElementById('confirmButton');
+    
+    // Set the confirmation message
+    confirmationMessage.textContent = 'Are you sure you want to verify this operator?';
+    
+    // Remove any existing event listeners
+    const newConfirmButton = confirmButton.cloneNode(true);
+    confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+    
+    // Add event listener to the confirm button
+    newConfirmButton.addEventListener('click', async function() {
+        try {
+            const token = localStorage.getItem('auth_token');
+            
+            const response = await fetch(`${BASE_URL}/api/admin/verify_operator.php?operator_id=${operatorId}&action=verify`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            if (response.ok) {
+                showNotification('Operator verified successfully', 'success');
+                loadOperatorsData();
+            } else {
+                const errorData = await response.json();
+                showNotification('Error verifying operator: ' + (errorData.error || 'Unknown error'), 'danger');
+            }
+        } catch (error) {
+            console.error('Error verifying operator:', error);
+            showNotification('Error verifying operator: ' + error.message, 'danger');
+        } finally {
+            // Hide the confirmation modal
+            confirmationModal.hide();
+        }
+    });
+    
+    // Show the confirmation modal
+    confirmationModal.show();
+}
+
+// Reject operator function
+async function rejectOperator(operatorId) {
+    // Show custom confirmation modal
+    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    const confirmationMessage = document.getElementById('confirmationMessage');
+    const confirmButton = document.getElementById('confirmButton');
+    
+    // Set the confirmation message
+    confirmationMessage.textContent = 'Are you sure you want to reject this operator?';
+    
+    // Remove any existing event listeners
+    const newConfirmButton = confirmButton.cloneNode(true);
+    confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+    
+    // Add event listener to the confirm button
+    newConfirmButton.addEventListener('click', async function() {
+        try {
+            const token = localStorage.getItem('auth_token');
+            
+            const response = await fetch(`${BASE_URL}/api/admin/verify_operator.php?operator_id=${operatorId}&action=reject`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            if (response.ok) {
+                showNotification('Operator rejected successfully', 'success');
+                loadOperatorsData();
+            } else {
+                const errorData = await response.json();
+                showNotification('Error rejecting operator: ' + (errorData.error || 'Unknown error'), 'danger');
+            }
+        } catch (error) {
+            console.error('Error rejecting operator:', error);
+            showNotification('Error rejecting operator: ' + error.message, 'danger');
         } finally {
             // Hide the confirmation modal
             confirmationModal.hide();

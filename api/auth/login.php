@@ -115,9 +115,9 @@ if (isset($input['action']) && $input['action'] === 'resend_verification') {
 }
 // If not a resend verification request, continue with normal login process
 // Validate input for normal login
-if (empty($input['email']) && empty($input['username'])) {
+if (empty($input['operator_code']) && empty($input['email']) && empty($input['username'])) {
     http_response_code(400);
-    echo json_encode(['error' => 'Email or username is required']);
+    echo json_encode(['error' => 'Operator code, email, or username is required']);
     exit();
 }
 if (empty($input['password'])) {
@@ -150,18 +150,59 @@ if ($_SESSION[$rateLimitKey]['count'] >= 5) {
 try {
     $db = Database::getInstance();
     
-    // Get user with login attempts tracking - UPDATED with account_locked
-    $loginField = filter_var($input['email'] ?? $input['username'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-    
-    $stmt = $db->prepare("
-        SELECT user_id, username, email, password_hash, user_type, 
-               is_verified, account_locked, login_attempts, last_login
-        FROM users 
-        WHERE {$loginField} = ?
-        LIMIT 1
-    ");
-    $stmt->execute([$input['email'] ?? $input['username']]);
-    $user = $stmt->fetch();
+    // Check if this is an operator login (using operator code)
+    if (!empty($input['operator_code'])) {
+        // Operator login with operator code
+        $operatorCode = trim($input['operator_code']);
+        
+        // Validate operator code format (OPR-XXXXXX)
+        if (!preg_match('/^OPR-\d{6}$/', $operatorCode)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid operator code format']);
+            exit();
+        }
+        
+        // Get operator by operator code - JOIN with users table
+        $stmt = $db->prepare("
+            SELECT u.user_id, u.username, u.email, u.password_hash, u.user_type, 
+                   u.is_verified, u.account_locked, u.login_attempts, u.last_login,
+                   o.operator_id, o.operator_code, o.company_name, o.contact_person, 
+                   o.status, o.verification_status
+            FROM operators o
+            JOIN users u ON o.user_id = u.user_id
+            WHERE o.operator_code = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$operatorCode]);
+        $user = $stmt->fetch();
+        
+        if (!$user) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid operator code']);
+            exit();
+        }
+        
+        // Check if operator account is active
+        if ($user['status'] !== 'active') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Operator account is not active']);
+            exit();
+        }
+        
+    } else {
+        // Regular user login with email or username
+        $loginField = filter_var($input['email'] ?? $input['username'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        
+        $stmt = $db->prepare("
+            SELECT user_id, username, email, password_hash, user_type, 
+                   is_verified, account_locked, login_attempts, last_login
+            FROM users 
+            WHERE {$loginField} = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$input['email'] ?? $input['username']]);
+        $user = $stmt->fetch();
+    }
     
     // Check if account exists and is locked
     if ($user && $user['account_locked']) {
@@ -190,12 +231,12 @@ try {
         }
         
         http_response_code(401);
-        echo json_encode(['error' => 'Invalid email or password']);
+        echo json_encode(['error' => 'Invalid credentials']);
         exit();
     }
     
-    // Check if email is verified
-    if (!$user['is_verified']) {
+    // Check if email is verified (for regular users, not operators)
+    if (!$user['is_verified'] && $user['user_type'] !== 'operator') {
         http_response_code(403);
         echo json_encode([
             'error' => 'Account not verified. Please check your email.',
@@ -228,6 +269,13 @@ try {
         'session_id' => $sessionId,
         'exp' => $expires // Add expiration claim
     ];
+    
+    // Add operator-specific data if this is an operator
+    if ($user['user_type'] === 'operator' && isset($user['operator_id'])) {
+        $tokenPayload['operator_id'] = $user['operator_id'];
+        $tokenPayload['operator_code'] = $user['operator_code'];
+    }
+    
     $token = JWTHelper::generateToken($tokenPayload);
     
     // Store session in database
@@ -271,9 +319,10 @@ try {
     
     // Check if user is admin for redirect information
     $isAdmin = ($user['user_type'] === 'admin');
+    $isOperator = ($user['user_type'] === 'operator');
     
-    // Return success response
-    echo json_encode([
+    // Prepare response data
+    $responseData = [
         'success' => true,
         'token' => $token,
         'user' => [
@@ -282,9 +331,32 @@ try {
             'email' => $user['email'],
             'user_type' => $user['user_type'],
             'is_admin' => $isAdmin
-        ],
-        'redirect' => $isAdmin ? '/public/admin/dashboard.php' : '/public/dashboard.html'
-    ]);
+        ]
+    ];
+    
+    // Add operator-specific data to response
+    if ($isOperator && isset($user['operator_id'])) {
+        $responseData['operator'] = [
+            'operator_id' => $user['operator_id'],
+            'operator_code' => $user['operator_code'],
+            'company_name' => $user['company_name'],
+            'contact_person' => $user['contact_person'],
+            'status' => $user['status'],
+            'verification_status' => $user['verification_status']
+        ];
+        
+        // Set redirect URL for operators
+        $responseData['redirect'] = '/operators/dashboard.html';
+    } else if ($isAdmin) {
+        // Set redirect URL for admins
+        $responseData['redirect'] = '/public/admin/dashboard.php';
+    } else {
+        // Set redirect URL for regular users
+        $responseData['redirect'] = '/public/dashboard.html';
+    }
+    
+    // Return success response
+    echo json_encode($responseData);
     
 } catch (PDOException $e) {
     error_log("Login error: " . $e->getMessage());

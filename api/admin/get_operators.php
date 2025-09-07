@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
 require_once __DIR__.'/../../config/database.php';
 require_once __DIR__.'/../../includes/jwt-helper.php';
 
@@ -24,7 +25,6 @@ error_log("Origin: " . ($origin ?? 'None'));
 
 // Try multiple ways to get the Authorization header
 $token = null;
-
 // Method 1: Direct from $_SERVER
 if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
@@ -33,7 +33,6 @@ if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
         $token = $matches[1];
     }
 }
-
 // Method 2: Using getallheaders() if available
 if (!$token && function_exists('getallheaders')) {
     $headers = getallheaders();
@@ -45,7 +44,6 @@ if (!$token && function_exists('getallheaders')) {
         }
     }
 }
-
 // Method 3: From REDIRECT_HTTP_AUTHORIZATION
 if (!$token && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
     $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
@@ -54,7 +52,6 @@ if (!$token && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
         $token = $matches[1];
     }
 }
-
 // Method 4: Try to get from Apache-specific headers
 if (!$token && function_exists('apache_request_headers')) {
     $apacheHeaders = apache_request_headers();
@@ -66,13 +63,11 @@ if (!$token && function_exists('apache_request_headers')) {
         }
     }
 }
-
 // Method 5: Check if token is in a custom header
 if (!$token && isset($_SERVER['HTTP_X_AUTH_TOKEN'])) {
     $token = $_SERVER['HTTP_X_AUTH_TOKEN'];
     error_log("Found token in X-Auth-Token header");
 }
-
 // Method 6: Check if token is in GET parameter
 if (!$token && isset($_GET['token'])) {
     $token = $_GET['token'];
@@ -117,11 +112,12 @@ try {
     $operators = $db->query("
         SELECT 
             o.operator_id,
+            o.operator_code,
             o.user_id,
             o.company_name,
-            o.license_number,
             o.contact_person,
             o.status,
+            o.verification_status,
             u.username,
             u.email,
             u.phone,

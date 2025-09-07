@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Terminus | Admin Dashboard</title>
@@ -14,7 +13,6 @@
     <!-- Responsive CSS -->
     <link rel="stylesheet" href="assets/css/responsive.css">
     <link rel="icon" href="images/logo.png" type="image/png">
-</head>
     <style>
         :root {
             --gradient-primary: linear-gradient(135deg, #FF5722 0%, #C2185B 100%);
@@ -234,7 +232,6 @@
             background-color: #dee2e6;
         }
     </style>
-    <link rel="icon" href="images/logo.png" type="image/png">
 </head>
 <body>
     <!-- Mobile Header -->
@@ -498,17 +495,18 @@
                                 <table class="table table-striped">
                                     <thead>
                                         <tr>
-                                            <th>Operator ID</th>
+                                            <th>Operator Code</th>
                                             <th>Company Name</th>
                                             <th>Contact Person</th>
                                             <th>Email</th>
                                             <th>Status</th>
+                                            <th>Verification</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="operatorsTable">
                                         <tr>
-                                            <td colspan="6" class="text-center">
+                                            <td colspan="7" class="text-center">
                                                 <div class="loading-spinner">
                                                     <div class="spinner-border spinner-border-sm" role="status">
                                                         <span class="visually-hidden">Loading...</span>
@@ -646,13 +644,13 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Confirm Password</label>
-                                <div class="input-group">
+                                    <div class="input-group">
                                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
                                         <input type="password" class="form-control" id="operatorConfirmPassword" required>
                                         <button class="btn btn-outline-secondary toggle-password" type="button">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                </div>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Phone</label>
@@ -664,10 +662,6 @@
                                 <div class="mb-3">
                                     <label class="form-label">Company Name</label>
                                     <input type="text" class="form-control" id="companyName" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">License Number</label>
-                                    <input type="text" class="form-control" id="licenseNumber">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Contact Person</label>
@@ -704,12 +698,12 @@
                     <form id="editOperatorForm">
                         <input type="hidden" id="editOperatorId">
                         <div class="mb-3">
-                            <label class="form-label">Company Name</label>
-                            <input type="text" class="form-control" id="editCompanyName" required>
+                            <label class="form-label">Operator Code</label>
+                            <input type="text" class="form-control" id="editOperatorCode" readonly>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">License Number</label>
-                            <input type="text" class="form-control" id="editLicenseNumber">
+                            <label class="form-label">Company Name</label>
+                            <input type="text" class="form-control" id="editCompanyName" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Contact Person</label>
@@ -720,6 +714,14 @@
                             <select class="form-control" id="editOperatorStatus">
                                 <option value="active">Active</option>
                                 <option value="suspended">Suspended</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Verification Status</label>
+                            <select class="form-control" id="editOperatorVerificationStatus">
+                                <option value="pending">Pending</option>
+                                <option value="verified">Verified</option>
+                                <option value="rejected">Rejected</option>
                             </select>
                         </div>
                     </form>
@@ -841,23 +843,23 @@
         </div>
     </div>
     <!-- Confirmation Modal -->
-<div class="modal fade" id="confirmationModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header modal-gradient-header">
-                <h5 class="modal-title">Confirm Action</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmationMessage">Are you sure you want to perform this action?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmButton">Confirm</button>
+    <div class="modal fade" id="confirmationModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header modal-gradient-header">
+                    <h5 class="modal-title">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmationMessage">Are you sure you want to perform this action?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmButton">Confirm</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
     
     <!-- Add update button event listeners -->
     <script>
