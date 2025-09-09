@@ -95,6 +95,44 @@
         .navbar-admin {
             background: var(--gradient-primary) !important;
         }
+        
+        /* Notification styles */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            width: 300px;
+        }
+        
+        .notification-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification-success i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
@@ -147,7 +185,7 @@
                             
                             <!-- Submit -->
                             <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-admin btn-lg">
+                                <button type="submit" class="btn btn-admin btn-lg" id="loginButton">
                                     <i class="fas fa-sign-in-alt me-2"></i>Login
                                 </button>
                             </div>
@@ -172,103 +210,7 @@
     </footer>
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Password visibility toggle
-        document.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', function() {
-                const input = this.previousElementSibling;
-                const icon = this.querySelector('i');
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.classList.replace('fa-eye', 'fa-eye-slash');
-                } else {
-                    input.type = 'password';
-                    icon.classList.replace('fa-eye-slash', 'fa-eye');
-                }
-            });
-        });
-        
-        // Form submission
-        document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const rememberMe = document.getElementById('rememberMe').checked;
-            
-            // Hide previous alerts
-            const alertElement = document.getElementById('loginAlert');
-            alertElement.classList.add('d-none');
-            
-            try {
-                const response = await fetch('/e-terminus/api/auth/login.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email: email,
-                        password: password,
-                        remember: rememberMe
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Store token
-                    localStorage.setItem('auth_token', data.token);
-                    
-                    // Check if user is admin
-                    if (data.user.user_type === 'admin' || data.user.is_admin) {
-                        // Redirect to admin dashboard
-                        window.location.href = 'dashboard.html'; // Updated to new filename
-                    } else {
-                        // Not an admin
-                        showAlert('You do not have admin privileges');
-                    }
-                } else {
-                    showAlert(data.error || 'Login failed');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showAlert('An error occurred during login');
-            }
-        });
-        
-        // Show alert message
-        function showAlert(message) {
-            const alertElement = document.getElementById('loginAlert');
-            alertElement.textContent = message;
-            alertElement.classList.remove('d-none');
-        }
-        
-        // Check if already logged in
-        window.addEventListener('DOMContentLoaded', async function() {
-            const token = localStorage.getItem('auth_token');
-            if (!token) return;
-            
-            try {
-                const response = await fetch('/e-terminus/api/auth/check_session.php', {
-                    method: 'GET',
-                    credentials: 'include',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Cache-Control': 'no-cache'
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.authenticated && data.user && (data.user.user_type === 'admin' || data.user.is_admin)) {
-                        // Already logged in as admin, redirect to dashboard
-                        window.location.href = 'dashboard.html';
-                    }
-                }
-            } catch (error) {
-                console.error('Auth check error:', error);
-            }
-        });
-    </script>
+    <!-- Custom JavaScript -->
+    <script src="assets/js/login.js"></script>
 </body>
 </html>

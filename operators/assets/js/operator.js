@@ -171,63 +171,85 @@ function setupLoginForm() {
                     
                     // In the login function (around line 200)
                     if (data.success) {
-    // Verify this is an operator account
-    if (data.user.user_type !== 'operator') {
-        showNotification('Unauthorized access. This portal is for operators only.', 'danger');
-        return;
-    }
-    
-    // Check if operator account is active
-    if (data.operator && data.operator.status !== 'active') {
-        showNotification('Your operator account is suspended. Please contact support.', 'danger');
-        return;
-    }
-    
-    // Store token and user data in multiple formats for cross-page compatibility
-    localStorage.setItem('auth_token', data.token);
-    localStorage.setItem('currentUser', JSON.stringify(data.user));        // Add this line
-    localStorage.setItem('operator_data', JSON.stringify(data.user));
-    if (data.operator) {
-        localStorage.setItem('operator_details', JSON.stringify(data.operator));
-    }
-    
-    // Redirect to dashboard
-    window.location.href = `${BASE_URL}/operators/dashboard.html`;
-}
-                } else {
-                    // Handle error responses
-                    let errorMessage = 'Login failed';
-                    
-                    if (response.status === 403) {
-                        // Try to extract error message from response
-                        if (responseText) {
-                            try {
-                                const errorData = JSON.parse(responseText);
-                                if (errorData.error) {
-                                    errorMessage = errorData.error;
-                                    
-                                    // Special handling for verification required
-                                    if (errorData.verification_required) {
-                                        showNotification(errorMessage, 'warning');
-                                        return;
-                                    }
-                                }
-                            } catch (e) {
-                                // Ignore JSON parsing errors for error responses
-                            }
+                        // Verify this is an operator account
+                        if (data.user.user_type !== 'operator') {
+                            showNotification('Unauthorized access. This portal is for operators only.', 'danger');
+                            return;
                         }
                         
+                        // Check if operator account is active
+                        if (data.operator && data.operator.status !== 'active') {
+                            showNotification('Your operator account is suspended. Please contact support.', 'danger');
+                            return;
+                        }
+                        
+                        // Show success notification
+                        showSuccessNotification('Login successful! Redirecting to dashboard...');
+                        
+                        // Store token and user data in multiple formats for cross-page compatibility
+                        localStorage.setItem('auth_token', data.token);
+                        localStorage.setItem('currentUser', JSON.stringify(data.user));
+                        localStorage.setItem('operator_data', JSON.stringify(data.user));
+                        if (data.operator) {
+                            localStorage.setItem('operator_details', JSON.stringify(data.operator));
+                        }
+                        
+                        // Redirect to dashboard after a short delay
+                        setTimeout(() => {
+                            window.location.href = `${BASE_URL}/operators/dashboard.html`;
+                        }, 1500);
+                    }
+                } else {
+                    // Handle error responses with improved error handling
+                    let errorMessage = 'Login failed';
+                    
+                    // Try to parse the response as JSON to get the error message
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                        if (errorData.error) {
+                            errorMessage = errorData.error;
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse error response as JSON:', e);
+                    }
+                    
+                    // Handle specific HTTP status codes
+                    if (response.status === 401) {
+                        // Authentication failed
+                        if (errorMessage === 'Login failed') {
+                            errorMessage = 'Invalid operator code or password. Please try again.';
+                        }
+                        
+                        // Check for account lockout or suspension
+                        if (responseText.includes('suspended') || responseText.includes('locked')) {
+                            errorMessage = 'Your operator account is suspended. Please contact support.';
+                        }
+                    } else if (response.status === 403) {
+                        // Forbidden access
                         if (errorMessage === 'Login failed') {
                             errorMessage = 'Access forbidden. Please check your credentials.';
                         }
+                        
+                        // Special handling for verification required
+                        if (errorData && errorData.verification_required) {
+                            showNotification(errorMessage, 'warning');
+                            return;
+                        }
                     } else if (response.status === 404) {
-                        errorMessage = 'Login endpoint not found.';
+                        errorMessage = 'Login endpoint not found. Please contact support.';
+                    } else if (response.status === 429) {
+                        errorMessage = 'Too many login attempts. Please try again later.';
                     } else if (response.status === 500) {
-                        errorMessage = 'Server error. Please try again later.';
+                        // Server error - show more user-friendly message
+                        if (errorMessage === 'Login failed') {
+                            errorMessage = 'Login service temporarily unavailable. Please try again later.';
+                        }
                     } else {
                         errorMessage = `Login failed with status ${response.status}: ${response.statusText}`;
                     }
                     
+                    console.log('Final error message:', errorMessage);
                     showNotification(errorMessage, 'danger');
                 }
             } catch (error) {
@@ -273,7 +295,7 @@ function checkOperatorAuthStatus() {
         }
         
         // Store user data as currentUser for main page compatibility
-        localStorage.setItem('currentUser', JSON.stringify(user));        // Add this line
+        localStorage.setItem('currentUser', JSON.stringify(user));
         
         // Merge user and operator details
         currentOperator = { ...user };
@@ -527,7 +549,12 @@ async function apiCall(url, options = {}) {
         }
         
         if (!response.ok) {
-            const errorData = await response.json();
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { error: 'API request failed' };
+            }
             throw new Error(errorData.error || 'API request failed');
         }
         
@@ -1074,9 +1101,13 @@ async function changePassword(e) {
 // Logout function
 function logout() {
     showConfirmationModal('Are you sure you want to logout?', function() {
-        console.log("Logout confirmed, clearing auth data...");
+        console.log("=== OPERATOR LOGOUT START ===");
         
-        // Clear ALL authentication data from localStorage
+        // Step 1: Get the token before clearing it
+        const token = localStorage.getItem('auth_token');
+        
+        // Step 2: Clear ALL authentication data from localStorage
+        console.log("Clearing localStorage items...");
         localStorage.removeItem('auth_token');
         localStorage.removeItem('currentUser');
         localStorage.removeItem('operator_data');
@@ -1091,13 +1122,40 @@ function logout() {
             }
         }
         
-        // Also clear any cookies that might be used for authentication
+        // Step 3: Clear all authentication cookies
+        console.log("Clearing cookies...");
         document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         
-        // Force a page reload to ensure everything is cleared
-        console.log("Redirecting to main page...");
-        window.location.href = '../index.html?' + new Date().getTime(); // Add timestamp to prevent caching
+        // Step 4: Call server logout endpoint to invalidate session
+        console.log("Calling server logout endpoint...");
+        fetch(`${BASE_URL}/api/auth/logout.php`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Logout request failed');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Server logout response:', data);
+        })
+        .catch(error => {
+            console.error('Error during server logout:', error);
+        })
+        .finally(() => {
+            console.log("=== OPERATOR LOGOUT COMPLETE ===");
+            
+            // Step 5: Force redirect to home page with cache-busting
+            console.log("Redirecting to home page...");
+            window.location.href = '../index.html?' + new Date().getTime();
+        });
     });
 }
 
@@ -1210,6 +1268,7 @@ function showNotification(message, type = 'info') {
     
     notificationContainer.appendChild(notification);
     
+    // Auto dismiss after 5 seconds
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -1230,3 +1289,33 @@ window.addEventListener('unhandledrejection', function(event) {
     console.error('Unhandled promise rejection:', event.reason);
     showNotification('An unexpected error occurred', 'danger');
 });
+
+// Function to show success notification
+function showSuccessNotification(message) {
+    // Check if notification container exists, if not create one
+    let notificationContainer = document.getElementById('notificationContainer');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notificationContainer';
+        notificationContainer.className = 'notification-container';
+        document.body.appendChild(notificationContainer);
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-success alert-dismissible fade show';
+    notification.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    notificationContainer.appendChild(notification);
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notificationContainer.contains(notification)) {
+                notificationContainer.removeChild(notification);
+            }
+        }, 150);
+    }, 3000);
+}

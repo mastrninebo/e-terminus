@@ -61,8 +61,6 @@ class LoginSystem {
             e.preventDefault();
             this.resendVerification();
         });
-        
-        // Remove demo account quick fill for security
     }
     
     generateCSRFToken() {
@@ -253,13 +251,34 @@ class LoginSystem {
                 body: JSON.stringify(formData)
             });
             
-            const data = await response.json();
+            // Clone the response so we can read it multiple times
+            const responseClone = response.clone();
+            
+            // Try to get the response as text first
+            let responseText;
+            try {
+                responseText = await response.text();
+            } catch (e) {
+                console.error('Error reading response text:', e);
+                responseText = '';
+            }
+            
+            // Try to parse as JSON
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Error parsing JSON response:', e);
+                console.log('Response text:', responseText);
+                data = { error: 'Invalid server response' };
+            }
             
             return {
                 ok: response.ok,
                 status: response.status,
                 data: data,
-                headers: response.headers
+                headers: response.headers,
+                responseText: responseText
             };
         } finally {
             // Reset button state
@@ -313,38 +332,73 @@ class LoginSystem {
     }
     
     handleLoginError(response, email) {
+        console.log('Handling login error:', response);
+        
         let errorMessage = 'Authentication failed. Please check your credentials.';
         
+        // Check if we have a specific error message in the response data
+        if (response.data && response.data.error) {
+            errorMessage = response.data.error;
+        } 
+        // If no error message but we have response text, try to extract from there
+        else if (response.responseText) {
+            try {
+                const textData = JSON.parse(response.responseText);
+                if (textData.error) {
+                    errorMessage = textData.error;
+                }
+            } catch (e) {
+                // Not JSON, check if it's HTML or plain text
+                if (response.responseText.includes('error')) {
+                    // Try to extract error message from HTML
+                    const match = response.responseText.match(/<[^>]*error[^>]*>([^<]*)/i);
+                    if (match && match[1]) {
+                        errorMessage = match[1].trim();
+                    }
+                }
+            }
+        }
+        
+        // Handle specific HTTP status codes
         switch (response.status) {
             case 400:
             case 401:
-                // Generic error message for security
-                errorMessage = 'Authentication failed. Please check your credentials.';
+                // Authentication failed - use more specific message if available
+                if (errorMessage === 'Authentication failed. Please check your credentials.' || 
+                    errorMessage === 'Invalid server response') {
+                    errorMessage = 'Invalid email or password. Please try again.';
+                }
                 
                 // Implement account lockout after multiple failed attempts
                 if (this.failedAttempts >= 5) {
                     this.lockAccount(email, 15);
-                    errorMessage = 'Too many failed attempts. Account temporarily locked.';
+                    errorMessage = 'Too many failed attempts. Account temporarily locked for 15 minutes.';
                 }
                 break;
             case 403:
-                errorMessage = response.data?.error || 'Account not verified';
-                if (response.data?.error?.includes('verified')) {
+                // Account not verified or other forbidden access
+                if (errorMessage.includes('verified') || errorMessage.includes('verification')) {
                     errorMessage += '<br><a href="#" onclick="loginSystem.resendVerification(\'' + email + '\'); return false;" class="alert-link">Resend verification email</a>';
                 }
                 break;
             case 429:
-                errorMessage = 'Too many attempts. Try again later.';
+                // Rate limited
+                errorMessage = 'Too many login attempts. Please try again later.';
                 const retryAfter = response.headers.get('Retry-After') || 15;
                 const until = new Date(Date.now() + retryAfter * 60 * 1000);
                 localStorage.setItem('rateLimitedUntil', until.toISOString());
                 this.showRateLimitNotice(until.toISOString());
                 break;
             case 500:
-                errorMessage = 'Server error. Please try again later.';
+                // Server error - show more user-friendly message
+                if (errorMessage === 'Invalid server response' || 
+                    errorMessage === 'Authentication failed. Please check your credentials.') {
+                    errorMessage = 'Login service temporarily unavailable. Please try again later.';
+                }
                 break;
         }
         
+        console.log('Final error message:', errorMessage);
         this.showAlert('danger', errorMessage);
         
         // Shake form for UX

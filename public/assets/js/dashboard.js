@@ -1,5 +1,6 @@
 const BASE_URL = window.location.origin + '/e-terminus';
 let currentUser = null;
+let confirmationCallback = null;
 
 // Main initialization
 document.addEventListener('DOMContentLoaded', function() {
@@ -7,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     loadDashboardData();
     handleTabSwitching();
+    setupLogoutButtons();
 });
 
 // Check if user is authenticated
@@ -194,6 +196,118 @@ function setupEventListeners() {
                 setupSettingsForms();
             }
         });
+    });
+}
+
+// Setup logout buttons
+function setupLogoutButtons() {
+    // Setup confirmation modal button
+    const confirmButton = document.getElementById('confirmButton');
+    if (confirmButton) {
+        confirmButton.addEventListener('click', function() {
+            // Hide the modal
+            const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+            confirmationModal.hide();
+            
+            // Execute the callback if it exists
+            if (confirmationCallback) {
+                confirmationCallback();
+                confirmationCallback = null;
+            }
+        });
+    }
+
+    // Logout buttons
+    const logoutBtn = document.getElementById('logoutBtn');
+    const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showConfirmationModal('Are you sure you want to logout?', function() {
+                performLogout();
+            });
+        });
+    }
+
+    if (mobileLogoutBtn) {
+        mobileLogoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showConfirmationModal('Are you sure you want to logout?', function() {
+                performLogout();
+            });
+        });
+    }
+}
+
+// Function to show confirmation modal
+function showConfirmationModal(message, callback) {
+    // Set the message
+    document.getElementById('confirmationMessage').textContent = message;
+    
+    // Store the callback
+    confirmationCallback = callback;
+    
+    // Show the modal
+    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    confirmationModal.show();
+}
+
+// Function to perform logout
+function performLogout() {
+    console.log("=== PASSENGER LOGOUT START ===");
+    
+    // Step 1: Get the token before clearing it
+    const token = localStorage.getItem('auth_token');
+    
+    // Step 2: Clear ALL authentication data from localStorage
+    console.log("Clearing localStorage items...");
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userData');
+    
+    // Clear any other potential auth-related items
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.includes('token') || key.includes('auth') || key.includes('user')) {
+            console.log("Removing additional auth item:", key);
+            localStorage.removeItem(key);
+        }
+    }
+    
+    // Step 3: Clear all authentication cookies
+    console.log("Clearing cookies...");
+    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    
+    // Step 4: Call server logout endpoint to invalidate session
+    console.log("Calling server logout endpoint...");
+    fetch(`${BASE_URL}/api/auth/logout.php`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Logout request failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Server logout response:', data);
+    })
+    .catch(error => {
+        console.error('Error during server logout:', error);
+    })
+    .finally(() => {
+        console.log("=== PASSENGER LOGOUT COMPLETE ===");
+        
+        // Step 5: Force redirect to home page with cache-busting
+        console.log("Redirecting to home page...");
+        window.location.href = `${BASE_URL}/index.html?` + new Date().getTime();
     });
 }
 

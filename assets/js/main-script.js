@@ -1,12 +1,14 @@
 const BASE_URL = window.location.origin + '/e-terminus';
 let currentUser = null;
 let selectedRating = 0;
+
 // Main initialization
 $(document).ready(function() {
     initializePage();
     setupEventListeners();
     checkAuthStatus();
 });
+
 // Initialize page components
 function initializePage() {
     setDefaultDate();
@@ -15,6 +17,7 @@ function initializePage() {
     initializeReviewsModal();
     loadPopularRoutes();
 }
+
 // Set default date to tomorrow
 function setDefaultDate() {
     const tomorrow = new Date();
@@ -24,6 +27,7 @@ function setDefaultDate() {
         dateInput.val(tomorrow.toISOString().split('T')[0]);
     }
 }
+
 // Animate route cards
 function animateRouteCards() {
     const routeCards = $('.route-card');
@@ -42,6 +46,7 @@ function animateRouteCards() {
         }, 100 + (index * 100));
     });
 }
+
 // Setup navbar scroll behavior
 function setupNavbarScroll() {
     const navbar = $('.navbar');
@@ -72,11 +77,15 @@ function setupNavbarScroll() {
         }, 2500);
     });
 }
+
 // Setup event listeners
 function setupEventListeners() {
-    // Logout handlers
-    $(document).on('click', '#logoutMenuItem', handleLogout);
-    $(document).on('click', '#modalLogoutButton', handleLogout);
+    // Logout handlers - now show confirmation modal
+    $(document).on('click', '#logoutMenuItem', showLogoutConfirmation);
+    $(document).on('click', '#modalLogoutButton', showLogoutConfirmation);
+    
+    // Confirm logout button
+    $(document).on('click', '#confirmButton', handleLogout);
     
     // Review type toggle
     $(document).on('change', 'input[name="reviewType"]', handleReviewTypeChange);
@@ -89,6 +98,16 @@ function setupEventListeners() {
     $(document).on('mouseenter', '.rating-star', handleStarHover);
     $(document).on('mouseleave', '.rating-stars', handleStarMouseLeave);
 }
+
+// Show logout confirmation modal
+function showLogoutConfirmation(e) {
+    if (e) e.preventDefault();
+    
+    // Show the confirmation modal
+    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    confirmationModal.show();
+}
+
 // Initialize reviews modal
 function initializeReviewsModal() {
     $('#reviewsModal').on('shown.bs.modal', function() {
@@ -104,6 +123,7 @@ function initializeReviewsModal() {
         resetReviewForm();
     });
 }
+
 // Check authentication status with localStorage support
 async function checkAuthStatus() {
     // Check localStorage first for immediate UI response
@@ -153,6 +173,7 @@ async function checkAuthStatus() {
         updateUIForLoggedOutUser();
     }
 }
+
 // Update UI for logged-in users
 function updateUIForLoggedInUser() {
     $('#authStatus').text(currentUser.username || 'My Account');
@@ -169,7 +190,8 @@ function updateUIForLoggedInUser() {
         dashboardUrl = '/e-terminus/admin/dashboard.html';
         dashboardText = 'Admin Dashboard';
     } else if (currentUser.user_type === 'operator') {
-        dashboardUrl = '/e-terminus/operator/dashboard.html';
+        // Fixed: Use the correct path with 'operators' (plural)
+        dashboardUrl = '/e-terminus/operators/dashboard.html';
         dashboardText = 'Operator Dashboard';
     } else {
         // For passengers, redirect to public dashboard page
@@ -189,6 +211,7 @@ function updateUIForLoggedInUser() {
     $('[data-auth="required"]').removeClass('d-none');
     $('[data-auth="hidden"]').addClass('d-none');
 }
+
 // Update UI for logged-out users
 function updateUIForLoggedOutUser() {
     $('#authStatus').text('Account');
@@ -204,14 +227,31 @@ function updateUIForLoggedOutUser() {
     $('[data-auth="required"]').addClass('d-none');
     $('[data-auth="hidden"]').removeClass('d-none');
 }
+
 // Handle logout
 async function handleLogout(e) {
     if (e) e.preventDefault();
     
     try {
-        // Clear localStorage first
+        // Clear ALL authentication data from localStorage
         localStorage.removeItem('currentUser');
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('operator_data');
+        localStorage.removeItem('operator_details');
+        
+        // Clear any other potential auth-related items
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.includes('token') || key.includes('auth') || key.includes('user') || key.includes('operator')) {
+                console.log("Removing additional auth item:", key);
+                localStorage.removeItem(key);
+            }
+        }
+        
+        // Also clear any cookies that might be used for authentication
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         
         const response = await fetch(`${BASE_URL}/api/auth/logout.php`, {
             method: 'POST',
@@ -225,14 +265,21 @@ async function handleLogout(e) {
             console.error('Logout failed:', response.status);
         }
         
+        // Hide confirmation modal if it's open
+        const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+        if (confirmationModal) {
+            confirmationModal.hide();
+        }
+        
         // Redirect to the main landing page (same as logged-out users)
-        window.location.href = BASE_URL + '/index.html';
+        window.location.href = BASE_URL + '/index.html?' + new Date().getTime(); // Add timestamp to prevent caching
     } catch (error) {
         console.error('Logout error:', error);
         // Still redirect even if API call fails
-        window.location.href = BASE_URL + '/index.html';
+        window.location.href = BASE_URL + '/index.html?' + new Date().getTime(); // Add timestamp to prevent caching
     }
 }
+
 // Show review form in modal
 function showReviewForm() {
     $('#authAlert').addClass('d-none');
@@ -240,11 +287,13 @@ function showReviewForm() {
     $('#userName').text(currentUser.username || 'User');
     $('#userEmail').text(currentUser.email || '');
 }
+
 // Show auth alert in modal
 function showAuthAlert() {
     $('#authAlert').removeClass('d-none');
     $('#reviewForm').addClass('d-none');
 }
+
 // Load operators for dropdown
 async function loadOperators() {
     try {
@@ -270,6 +319,7 @@ async function loadOperators() {
         showLoading(false);
     }
 }
+
 // Load fallback operators
 function loadFallbackOperators() {
     const fallbackOperators = [
@@ -280,6 +330,7 @@ function loadFallbackOperators() {
     ];
     populateOperatorDropdown(fallbackOperators);
 }
+
 // Populate operator dropdown
 function populateOperatorDropdown(operators) {
     const select = $('#operatorSelect');
@@ -293,6 +344,7 @@ function populateOperatorDropdown(operators) {
         });
     }
 }
+
 // Handle review type change
 function handleReviewTypeChange() {
     if ($('#reviewOperator').is(':checked')) {
@@ -303,6 +355,7 @@ function handleReviewTypeChange() {
         $('#operatorSelect').prop('required', false);
     }
 }
+
 // Handle star click
 function handleStarClick() {
     selectedRating = $(this).data('value');
@@ -310,15 +363,18 @@ function handleStarClick() {
     updateStarDisplay(selectedRating);
     updateRatingText(selectedRating);
 }
+
 // Handle star hover
 function handleStarHover() {
     const hoverRating = $(this).data('value');
     updateStarDisplay(hoverRating);
 }
+
 // Handle star mouse leave
 function handleStarMouseLeave() {
     updateStarDisplay(selectedRating);
 }
+
 // Update star display
 function updateStarDisplay(rating) {
     $('.rating-star').each(function() {
@@ -330,6 +386,7 @@ function updateStarDisplay(rating) {
         }
     });
 }
+
 // Update rating text
 function updateRatingText(rating) {
     const ratingTexts = [
@@ -342,6 +399,7 @@ function updateRatingText(rating) {
     ];
     $('#ratingText').text(ratingTexts[rating] || 'Select your rating');
 }
+
 // Reset review form
 function resetReviewForm() {
     $('#reviewForm').trigger('reset');
@@ -352,6 +410,7 @@ function resetReviewForm() {
     $('#operatorSelect').prop('required', false);
     $('input[name="reviewType"][value="platform"]').prop('checked', true);
 }
+
 // Handle review submission
 async function handleReviewSubmit(e) {
     e.preventDefault();
@@ -407,6 +466,7 @@ async function handleReviewSubmit(e) {
         showLoading(false);
     }
 }
+
 // Load popular routes
 function loadPopularRoutes() {
     const routes = [
@@ -442,6 +502,7 @@ function loadPopularRoutes() {
         });
     }, 100);
 }
+
 // Show loading state
 function showLoading(loading, message = '') {
     const submitButton = $('#reviewForm button[type="submit"]');
@@ -457,6 +518,7 @@ function showLoading(loading, message = '') {
         }
     }
 }
+
 // Show success message (using toast notification)
 function showSuccess(message) {
     // Create a toast notification
@@ -486,6 +548,7 @@ function showSuccess(message) {
         $(this).remove();
     });
 }
+
 // Show error message (using toast notification)
 function showError(message) {
     // Create a toast notification
@@ -515,12 +578,14 @@ function showError(message) {
         $(this).remove();
     });
 }
+
 // Helper function to get cookie
 function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
 }
+
 // Reviews Carousel functionality
 class ReviewsCarousel {
     constructor() {
@@ -695,6 +760,7 @@ class ReviewsCarousel {
         this.startAutoPlay();
     }
 }
+
 // Initialize reviews carousel when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     new ReviewsCarousel();
