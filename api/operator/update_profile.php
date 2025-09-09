@@ -47,23 +47,75 @@ try {
     // Get operator ID from token
     $operatorId = $payload['operator_id'];
     
-    // Update operator profile
+    // Get user_id for this operator
+    $stmt = $db->prepare("SELECT user_id FROM operators WHERE operator_id = ?");
+    $stmt->execute([$operatorId]);
+    $operatorData = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$operatorData) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Operator not found']);
+        exit();
+    }
+    
+    $userId = $operatorData['user_id'];
+    
+    // Begin transaction
+    $db->beginTransaction();
+    
+    // Update operators table
     $stmt = $db->prepare("
         UPDATE operators 
-        SET company_name = ?, contact_person = ?, phone = ?
+        SET company_name = ?, contact_person = ?
         WHERE operator_id = ?
     ");
     
-    $stmt->execute([
+    $result1 = $stmt->execute([
         $input['companyName'],
         $input['contactPerson'] ?? null,
-        $input['phone'] ?? null,
         $operatorId
     ]);
     
-    echo json_encode(['success' => true, 'message' => 'Profile updated successfully']);
+    // Update users table for phone number
+    $result2 = true;
+    if (isset($input['phone'])) {
+        $stmt = $db->prepare("
+            UPDATE users 
+            SET phone = ?
+            WHERE user_id = ?
+        ");
+        $result2 = $stmt->execute([
+            $input['phone'],
+            $userId
+        ]);
+    }
+    
+    if ($result1 && $result2) {
+        $db->commit();
+        echo json_encode([
+            'success' => true, 
+            'message' => 'Profile updated successfully'
+        ]);
+    } else {
+        $db->rollBack();
+        echo json_encode([
+            'success' => false, 
+            'error' => 'Failed to update profile'
+        ]);
+    }
     
 } catch (PDOException $e) {
+    if (isset($db) && $db->inTransaction()) {
+        $db->rollBack();
+    }
+    error_log("Update profile error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Database error']);
+    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+} catch (Exception $e) {
+    if (isset($db) && $db->inTransaction()) {
+        $db->rollBack();
+    }
+    error_log("Update profile general error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'An error occurred: ' . $e->getMessage()]);
 }

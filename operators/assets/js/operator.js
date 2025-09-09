@@ -1,5 +1,6 @@
 const BASE_URL = window.location.origin + '/e-terminus';
 let currentOperator = null;
+let confirmationCallback = null;
 
 // API Paths - using absolute paths
 const API_PATHS = {
@@ -15,6 +16,19 @@ const API_PATHS = {
     changePassword: `${BASE_URL}/api/operator/change_password.php`
 };
 
+// Function to show confirmation modal
+function showConfirmationModal(message, callback) {
+    // Set the message
+    document.getElementById('confirmationMessage').textContent = message;
+    
+    // Store the callback
+    confirmationCallback = callback;
+    
+    // Show the modal
+    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    confirmationModal.show();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded');
     
@@ -25,6 +39,22 @@ document.addEventListener('DOMContentLoaded', function() {
         container.className = 'notification-container';
         document.body.appendChild(container);
         console.log('Notification container created');
+    }
+    
+    // Setup confirmation modal button
+    const confirmButton = document.getElementById('confirmButton');
+    if (confirmButton) {
+        confirmButton.addEventListener('click', function() {
+            // Hide the modal
+            const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+            confirmationModal.hide();
+            
+            // Execute the callback if it exists
+            if (confirmationCallback) {
+                confirmationCallback();
+                confirmationCallback = null;
+            }
+        });
     }
     
     // Check if we're on login page or dashboard
@@ -139,31 +169,31 @@ function setupLoginForm() {
                     
                     console.log('Login response data:', data);
                     
+                    // In the login function (around line 200)
                     if (data.success) {
-                        // Verify this is an operator account
-                        if (data.user.user_type !== 'operator') {
-                            showNotification('Unauthorized access. This portal is for operators only.', 'danger');
-                            return;
-                        }
-                        
-                        // Check if operator account is active
-                        if (data.operator && data.operator.status !== 'active') {
-                            showNotification('Your operator account is suspended. Please contact support.', 'danger');
-                            return;
-                        }
-                        
-                        // Store token and user data
-                        localStorage.setItem('auth_token', data.token);
-                        localStorage.setItem('operator_data', JSON.stringify(data.user));
-                        if (data.operator) {
-                            localStorage.setItem('operator_details', JSON.stringify(data.operator));
-                        }
-                        
-                        // Redirect to dashboard
-                        window.location.href = 'dashboard.html';
-                    } else {
-                        showNotification(data.error || 'Login failed', 'danger');
-                    }
+    // Verify this is an operator account
+    if (data.user.user_type !== 'operator') {
+        showNotification('Unauthorized access. This portal is for operators only.', 'danger');
+        return;
+    }
+    
+    // Check if operator account is active
+    if (data.operator && data.operator.status !== 'active') {
+        showNotification('Your operator account is suspended. Please contact support.', 'danger');
+        return;
+    }
+    
+    // Store token and user data in multiple formats for cross-page compatibility
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('currentUser', JSON.stringify(data.user));        // Add this line
+    localStorage.setItem('operator_data', JSON.stringify(data.user));
+    if (data.operator) {
+        localStorage.setItem('operator_details', JSON.stringify(data.operator));
+    }
+    
+    // Redirect to dashboard
+    window.location.href = `${BASE_URL}/operators/dashboard.html`;
+}
                 } else {
                     // Handle error responses
                     let errorMessage = 'Login failed';
@@ -241,6 +271,9 @@ function checkOperatorAuthStatus() {
             redirectToLogin();
             return;
         }
+        
+        // Store user data as currentUser for main page compatibility
+        localStorage.setItem('currentUser', JSON.stringify(user));        // Add this line
         
         // Merge user and operator details
         currentOperator = { ...user };
@@ -907,7 +940,7 @@ async function saveSchedule() {
     }
 }
 
-// Update Profile
+// Update the updateProfile function in operator.js
 async function updateProfile(e) {
     e.preventDefault();
     
@@ -925,45 +958,68 @@ async function updateProfile(e) {
         const profileData = {
             companyName,
             contactPerson,
-            phone
+            phone // Now sending phone to backend
         };
         
-        console.log('Updating profile:', profileData);
+        console.log('=== Updating Profile ===');
+        console.log('Profile data:', profileData);
+        console.log('Sending to:', API_PATHS.updateProfile);
         
-        const response = await apiCall(API_PATHS.updateProfile, {
+        const response = await fetch(API_PATHS.updateProfile, {
             method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(profileData)
         });
         
-        console.log('Update profile response:', response);
+        console.log('Response status:', response.status);
+        console.log('Response headers:', [...response.headers.entries()]);
         
-        if (response.success) {
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        
+        if (!response.ok) {
+            try {
+                const errorData = JSON.parse(responseText);
+                throw new Error(errorData.error || 'Error updating profile');
+            } catch (e) {
+                throw new Error(`HTTP ${response.status}: ${responseText}`);
+            }
+        }
+        
+        const data = JSON.parse(responseText);
+        console.log('Response data:', data);
+        
+        if (data.success) {
             showNotification('Profile updated successfully', 'success');
             
             // Update current operator data
             currentOperator.company_name = companyName;
             currentOperator.contact_person = contactPerson;
-            currentOperator.phone = phone;
+            currentOperator.phone = phone; // Update phone in current operator data
             
-            // Update localStorage
-            localStorage.setItem('operator_details', JSON.stringify({
-                operator_id: currentOperator.operator_id,
-                operator_code: currentOperator.operator_code,
-                company_name: companyName,
-                contact_person: contactPerson,
-                phone: phone,
-                status: currentOperator.status,
-                verification_status: currentOperator.verification_status
-            }));
+            // Update localStorage - need to update both operator_data and operator_details
+            // operator_data contains user table info
+            const operatorUserData = JSON.parse(localStorage.getItem('operator_data') || '{}');
+            operatorUserData.phone = phone;
+            localStorage.setItem('operator_data', JSON.stringify(operatorUserData));
+            
+            // operator_details contains operator table info
+            const operatorDetails = JSON.parse(localStorage.getItem('operator_details') || '{}');
+            operatorDetails.company_name = companyName;
+            operatorDetails.contact_person = contactPerson;
+            localStorage.setItem('operator_details', JSON.stringify(operatorDetails));
             
             // Update UI
             updateUIForLoggedInOperator();
         } else {
-            showNotification(response.error || 'Error updating profile', 'danger');
+            showNotification(data.error || 'Error updating profile', 'danger');
         }
     } catch (error) {
         console.error('Error updating profile:', error);
-        showNotification('Error updating profile', 'danger');
+        showNotification('Error updating profile: ' + error.message, 'danger');
     }
 }
 
@@ -1017,15 +1073,32 @@ async function changePassword(e) {
 
 // Logout function
 function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        // Clear localStorage
+    showConfirmationModal('Are you sure you want to logout?', function() {
+        console.log("Logout confirmed, clearing auth data...");
+        
+        // Clear ALL authentication data from localStorage
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('currentUser');
         localStorage.removeItem('operator_data');
         localStorage.removeItem('operator_details');
         
-        // Redirect to login page
-        window.location.href = 'login.html';
-    }
+        // Clear any other potential auth-related items
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.includes('token') || key.includes('auth') || key.includes('user') || key.includes('operator')) {
+                console.log("Removing additional auth item:", key);
+                localStorage.removeItem(key);
+            }
+        }
+        
+        // Also clear any cookies that might be used for authentication
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        
+        // Force a page reload to ensure everything is cleared
+        console.log("Redirecting to main page...");
+        window.location.href = '../index.html?' + new Date().getTime(); // Add timestamp to prevent caching
+    });
 }
 
 // View Booking Details
@@ -1045,9 +1118,10 @@ function editBus(busId) {
 
 // Delete Bus
 function deleteBus(busId) {
-    if (confirm('Are you sure you want to delete this bus?')) {
+    showConfirmationModal('Are you sure you want to delete this bus?', function() {
         showNotification(`Deleting bus #${busId}`, 'info');
-    }
+        // Add actual delete logic here
+    });
 }
 
 // Edit Schedule
@@ -1057,9 +1131,10 @@ function editSchedule(scheduleId) {
 
 // Delete Schedule
 function deleteSchedule(scheduleId) {
-    if (confirm('Are you sure you want to delete this schedule?')) {
+    showConfirmationModal('Are you sure you want to delete this schedule?', function() {
         showNotification(`Deleting schedule #${scheduleId}`, 'info');
-    }
+        // Add actual delete logic here
+    });
 }
 
 // Helper Functions
