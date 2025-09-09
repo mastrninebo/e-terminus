@@ -16,29 +16,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 require_once __DIR__.'/../../config/database.php';
 require_once __DIR__.'/../../includes/jwt-helper.php';
-// Debug logging
-error_log("=== CANCEL BOOKING DEBUG ===");
-error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
-error_log("Origin: " . ($origin ?? 'None'));
+
 // Only allow PUT requests
 if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
     http_response_code(405);
     echo json_encode(['error' => 'Method not allowed']);
     exit();
 }
-// Get booking_id from URL
-$bookingId = isset($_GET['booking_id']) ? (int)$_GET['booking_id'] : null;
-if (!$bookingId) {
+
+// Get JSON input
+$input = json_decode(file_get_contents('php://input'), true);
+
+// Validate input
+if (!isset($input['user_id']) || empty($input['user_id'])) {
     http_response_code(400);
-    echo json_encode(['error' => 'Booking ID is required']);
+    echo json_encode(['error' => 'User ID is required']);
     exit();
 }
+
+$user_id = (int)$input['user_id'];
+$allowed_fields = ['username', 'email', 'phone', 'user_type', 'account_locked'];
+$update_data = [];
+
+foreach ($allowed_fields as $field) {
+    if (isset($input[$field])) {
+        $update_data[$field] = $input[$field];
+    }
+}
+
+if (empty($update_data)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'No fields to update']);
+    exit();
+}
+
+// Validate user_type if provided
+if (isset($update_data['user_type'])) {
+    $allowed_user_types = ['passenger', 'operator', 'admin'];
+    if (!in_array($update_data['user_type'], $allowed_user_types)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid user type']);
+        exit();
+    }
+}
+
 // Try multiple ways to get the Authorization header
 $token = null;
 // Method 1: Direct from $_SERVER
 if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
-    error_log("Found token in HTTP_AUTHORIZATION: " . substr($authHeader, 0, 20) . "...");
     if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
         $token = $matches[1];
     }
@@ -48,7 +74,6 @@ if (!$token && function_exists('getallheaders')) {
     $headers = getallheaders();
     if (isset($headers['Authorization'])) {
         $authHeader = $headers['Authorization'];
-        error_log("Found token in getallheaders Authorization: " . substr($authHeader, 0, 20) . "...");
         if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
             $token = $matches[1];
         }
@@ -57,7 +82,6 @@ if (!$token && function_exists('getallheaders')) {
 // Method 3: From REDIRECT_HTTP_AUTHORIZATION
 if (!$token && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
     $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-    error_log("Found token in REDIRECT_HTTP_AUTHORIZATION: " . substr($authHeader, 0, 20) . "...");
     if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
         $token = $matches[1];
     }
@@ -67,7 +91,6 @@ if (!$token && function_exists('apache_request_headers')) {
     $apacheHeaders = apache_request_headers();
     if (isset($apacheHeaders['Authorization'])) {
         $authHeader = $apacheHeaders['Authorization'];
-        error_log("Found token in apache_request_headers Authorization: " . substr($authHeader, 0, 20) . "...");
         if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
             $token = $matches[1];
         }
@@ -76,29 +99,22 @@ if (!$token && function_exists('apache_request_headers')) {
 // Method 5: Check if token is in a custom header
 if (!$token && isset($_SERVER['HTTP_X_AUTH_TOKEN'])) {
     $token = $_SERVER['HTTP_X_AUTH_TOKEN'];
-    error_log("Found token in X-Auth-Token header");
 }
-// Method 6: Check if token is in GET parameter
-if (!$token && isset($_GET['token'])) {
-    $token = $_GET['token'];
-    error_log("Found token in GET parameter");
-}
+
 if (!$token) {
-    error_log("No token found in any location");
     http_response_code(401);
     echo json_encode(['error' => 'No token provided']);
     exit();
 }
-error_log("Token found successfully");
+
 try {
     // Verify JWT token
     $payload = JWTHelper::validateToken($token);
-    error_log("JWT validation successful");
     
     // Verify token exists in database and is not expired
     $db = Database::getInstance();
     $stmt = $db->prepare("
-        SELECT us.*, u.user_type 
+        SELECT us.*, u.user_id as admin_id, u.user_type 
         FROM user_sessions us
         JOIN users u ON us.user_id = u.user_id
         WHERE us.jwt_token = ? AND us.expires_at > NOW() AND u.user_type = 'admin'
@@ -107,68 +123,76 @@ try {
     $session = $stmt->fetch();
     
     if (!$session) {
-        error_log("Session not found in database");
         http_response_code(401);
         echo json_encode(['error' => 'Invalid or expired session']);
         exit();
     }
     
-    error_log("Session found in database for user: " . $session['user_type']);
+    $admin_id = $session['admin_id'];
     
-    // Check if booking exists
-    $stmt = $db->prepare("SELECT * FROM bookings WHERE booking_id = ?");
-    $stmt->execute([$bookingId]);
-    $booking = $stmt->fetch();
+    // Check if user exists
+    $stmt = $db->prepare("SELECT * FROM users WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
     
-    if (!$booking) {
-        error_log("Booking not found: " . $bookingId);
+    if (!$user) {
         http_response_code(404);
-        echo json_encode(['error' => 'Booking not found']);
+        echo json_encode(['error' => 'User not found']);
         exit();
     }
     
-    // Check if booking is already cancelled
-    if ($booking['booking_status'] === 'cancelled') {
-        http_response_code(400);
-        echo json_encode(['error' => 'Booking is already cancelled']);
+    // Prevent admin from updating themselves to non-admin
+    if ($user_id == $admin_id && isset($update_data['user_type']) && $update_data['user_type'] !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['error' => 'Admins cannot change their own user type']);
         exit();
     }
     
-    // Get PUT data
-    $data = json_decode(file_get_contents('php://input'), true);
-    error_log("PUT data: " . json_encode($data));
-    
-    // Validate status if provided
-    if (isset($data['status'])) {
-        $allowedStatuses = ['confirmed', 'cancelled', 'completed'];
-        if (!in_array($data['status'], $allowedStatuses)) {
+    // Check if new username is taken by another user
+    if (isset($update_data['username']) && $update_data['username'] !== $user['username']) {
+        $stmt = $db->prepare("SELECT user_id FROM users WHERE username = ? AND user_id != ?");
+        $stmt->execute([$update_data['username'], $user_id]);
+        if ($stmt->fetch()) {
             http_response_code(400);
-            echo json_encode(['error' => 'Invalid status']);
+            echo json_encode(['error' => 'Username already taken']);
             exit();
         }
-    } else {
-        // Default to cancelled if not provided
-        $data['status'] = 'cancelled';
     }
     
-    // Update booking status
-    $updateQuery = "UPDATE bookings SET booking_status = ? WHERE booking_id = ?";
-    $stmt = $db->prepare($updateQuery);
-    $stmt->execute([$data['status'], $bookingId]);
+    // Check if new email is taken by another user
+    if (isset($update_data['email']) && $update_data['email'] !== $user['email']) {
+        $stmt = $db->prepare("SELECT user_id FROM users WHERE email = ? AND user_id != ?");
+        $stmt->execute([$update_data['email'], $user_id]);
+        if ($stmt->fetch()) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Email already taken']);
+            exit();
+        }
+    }
+    
+    // Build the update query
+    $set_clause = [];
+    $params = [];
+    foreach ($update_data as $field => $value) {
+        $set_clause[] = "$field = ?";
+        $params[] = $value;
+    }
+    $params[] = $user_id;
+    
+    $sql = "UPDATE users SET " . implode(', ', $set_clause) . " WHERE user_id = ?";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     
     if ($stmt->rowCount() === 0) {
         http_response_code(400);
-        echo json_encode(['error' => 'Failed to update booking status']);
+        echo json_encode(['error' => 'No changes made']);
         exit();
     }
     
-    error_log("Booking updated successfully: " . $bookingId);
-    
+    // Return success response
     echo json_encode([
         'success' => true,
-        'message' => 'Booking status updated successfully',
-        'booking_id' => $bookingId,
-        'new_status' => $data['status']
+        'message' => 'User updated successfully'
     ]);
     
 } catch (PDOException $e) {

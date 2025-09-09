@@ -591,61 +591,63 @@
     </div>
     
     <!-- Add Schedule Modal -->
-    <div class="modal fade" id="addScheduleModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header modal-gradient-header">
-                    <h5 class="modal-title">Add New Schedule</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addScheduleForm">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Route</label>
-                                <select class="form-select" id="scheduleRoute" required>
-                                    <option value="lusaka-livingstone">Lusaka to Livingstone</option>
-                                    <option value="ndola-kitwe">Ndola to Kitwe</option>
-                                    <option value="livingstone-lusaka">Livingstone to Lusaka</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Bus</label>
-                                <select class="form-select" id="scheduleBus" required>
-                                    <option value="ZM-1234">ZM-1234 (40 seats)</option>
-                                    <option value="ZM-5678">ZM-5678 (32 seats)</option>
-                                </select>
-                            </div>
+<div class="modal fade" id="addScheduleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-gradient-header">
+                <h5 class="modal-title">Add New Schedule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addScheduleForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Route</label>
+                            <select class="form-select" id="scheduleRoute" required>
+                                <option value="">Select a route</option>
+                                <option value="1">Lusaka to Livingstone</option>
+                                <option value="2">Lusaka to Ndola</option>
+                                <option value="3">Lusaka to Chipata</option>
+                                <option value="4">Lusaka to Solwezi</option>
+                            </select>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Departure Time</label>
-                                <input type="datetime-local" class="form-control" id="departureTime" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Arrival Time</label>
-                                <input type="datetime-local" class="form-control" id="arrivalTime" required>
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Bus</label>
+                            <select class="form-select" id="scheduleBus" required>
+                                <option value="">Select a bus</option>
+                                <!-- Buses will be loaded here dynamically -->
+                            </select>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Price (ZMW)</label>
-                                <input type="number" class="form-control" id="ticketPrice" placeholder="250" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Available Seats</label>
-                                <input type="number" class="form-control" id="availableSeats" placeholder="40" required>
-                            </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Departure Time</label>
+                            <input type="datetime-local" class="form-control" id="departureTime" required>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-gradient-primary" id="saveScheduleBtn">Create Schedule</button>
-                </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Arrival Time</label>
+                            <input type="datetime-local" class="form-control" id="arrivalTime" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Price (ZMW)</label>
+                            <input type="number" class="form-control" id="ticketPrice" placeholder="250" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Available Seats</label>
+                            <input type="number" class="form-control" id="availableSeats" placeholder="40" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-gradient-primary" id="saveScheduleBtn">Create Schedule</button>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmationModal" tabindex="-1">

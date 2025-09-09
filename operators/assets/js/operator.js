@@ -1,7 +1,6 @@
 const BASE_URL = window.location.origin + '/e-terminus';
 let currentOperator = null;
 let confirmationCallback = null;
-
 // API Paths - using absolute paths
 const API_PATHS = {
     login: `${BASE_URL}/api/auth/login.php`,
@@ -15,7 +14,6 @@ const API_PATHS = {
     updateProfile: `${BASE_URL}/api/operator/update_profile.php`,
     changePassword: `${BASE_URL}/api/operator/change_password.php`
 };
-
 // Function to show confirmation modal
 function showConfirmationModal(message, callback) {
     // Set the message
@@ -28,7 +26,6 @@ function showConfirmationModal(message, callback) {
     const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
     confirmationModal.show();
 }
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded');
     
@@ -65,9 +62,82 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Setting up dashboard');
         checkOperatorAuthStatus();
         setupDashboardEventListeners();
+        // Initialize schedule modal bus loading
+        setupScheduleModalBusLoading();
     }
 });
-
+// Function to load buses for the schedule modal
+function setupScheduleModalBusLoading() {
+    // When the modal is shown, load the buses
+    const addScheduleModal = document.getElementById('addScheduleModal');
+    if (addScheduleModal) {
+        addScheduleModal.addEventListener('show.bs.modal', loadOperatorBusesForSchedule);
+        
+        // When a bus is selected, auto-fill the available seats
+        const scheduleBusSelect = document.getElementById('scheduleBus');
+        if (scheduleBusSelect) {
+            scheduleBusSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const capacity = selectedOption.getAttribute('data-capacity');
+                
+                if (capacity) {
+                    const availableSeatsInput = document.getElementById('availableSeats');
+                    if (availableSeatsInput) {
+                        availableSeatsInput.value = capacity;
+                    }
+                }
+            });
+        }
+    }
+}
+// Function to load operator's buses for schedule modal
+async function loadOperatorBusesForSchedule() {
+    const busSelect = document.getElementById('scheduleBus');
+    if (!busSelect) return;
+    
+    // Only load buses if the dropdown is empty (to avoid reloading unnecessarily)
+    if (busSelect.children.length <= 1) {
+        // Show loading state
+        busSelect.innerHTML = '<option value="">Loading buses...</option>';
+        
+        try {
+            // Fetch buses for this operator using the existing endpoint
+            const response = await fetch(API_PATHS.getBuses, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load buses');
+            }
+            
+            const buses = await response.json();
+            
+            busSelect.innerHTML = '<option value="">Select a bus</option>';
+            
+            if (buses && buses.length > 0) {
+                buses.forEach(bus => {
+                    const option = document.createElement('option');
+                    option.value = bus.bus_id;
+                    option.setAttribute('data-capacity', bus.capacity);
+                    option.textContent = `${bus.plate_number} (${bus.capacity} seats)`;
+                    busSelect.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = "";
+                option.disabled = true;
+                option.textContent = "No buses available";
+                busSelect.appendChild(option);
+            }
+        } catch (error) {
+            console.error('Error loading buses:', error);
+            busSelect.innerHTML = '<option value="" disabled>Error loading buses</option>';
+        }
+    }
+}
 // Login Form Setup
 function setupLoginForm() {
     const loginForm = document.getElementById('operatorLoginForm');
@@ -265,7 +335,6 @@ function setupLoginForm() {
         });
     }
 }
-
 // Check Operator Authentication
 function checkOperatorAuthStatus() {
     console.log('Checking operator auth status...');
@@ -317,7 +386,6 @@ function checkOperatorAuthStatus() {
         redirectToLogin();
     }
 }
-
 // Redirect to login page
 function redirectToLogin() {
     localStorage.removeItem('auth_token');
@@ -325,7 +393,6 @@ function redirectToLogin() {
     localStorage.removeItem('operator_details');
     window.location.href = 'login.html';
 }
-
 // Update UI for logged-in operator
 function updateUIForLoggedInOperator() {
     console.log('Updating UI for logged-in operator');
@@ -416,7 +483,6 @@ function updateUIForLoggedInOperator() {
     
     console.log('UI update completed');
 }
-
 // Setup Dashboard Event Listeners
 function setupDashboardEventListeners() {
     console.log('Setting up dashboard event listeners');
@@ -503,7 +569,6 @@ function setupDashboardEventListeners() {
     
     console.log('Dashboard event listeners setup completed');
 }
-
 // Load Dashboard Data
 async function loadDashboardData() {
     console.log('Loading dashboard data...');
@@ -521,7 +586,6 @@ async function loadDashboardData() {
         showNotification('Error loading dashboard data', 'danger');
     }
 }
-
 // API call helper function
 async function apiCall(url, options = {}) {
     const token = localStorage.getItem('auth_token');
@@ -549,11 +613,15 @@ async function apiCall(url, options = {}) {
         }
         
         if (!response.ok) {
+            // Get the response text to see the actual error
+            const responseText = await response.text();
+            console.log('Error response text:', responseText);
+            
             let errorData;
             try {
-                errorData = await response.json();
+                errorData = JSON.parse(responseText);
             } catch (e) {
-                errorData = { error: 'API request failed' };
+                errorData = { error: responseText || 'API request failed' };
             }
             throw new Error(errorData.error || 'API request failed');
         }
@@ -565,7 +633,6 @@ async function apiCall(url, options = {}) {
         throw error;
     }
 }
-
 // Load Operator Statistics
 async function loadOperatorStats() {
     console.log('Loading operator stats...');
@@ -613,7 +680,6 @@ async function loadOperatorStats() {
         showNotification('Error loading statistics', 'danger');
     }
 }
-
 // Load Buses Data
 async function loadBusesData() {
     console.log('Loading buses data...');
@@ -675,7 +741,6 @@ async function loadBusesData() {
         showNotification('Error loading buses data', 'danger');
     }
 }
-
 // Load Schedules Data
 async function loadSchedulesData() {
     console.log('Loading schedules data...');
@@ -740,7 +805,6 @@ async function loadSchedulesData() {
         showNotification('Error loading schedules data', 'danger');
     }
 }
-
 // Load Bookings Data
 async function loadBookingsData() {
     console.log('Loading bookings data...');
@@ -804,7 +868,6 @@ async function loadBookingsData() {
         showNotification('Error loading bookings data', 'danger');
     }
 }
-
 // Load Reviews Data
 async function loadReviewsData() {
     console.log('Loading reviews data...');
@@ -866,7 +929,6 @@ async function loadReviewsData() {
         showNotification('Error loading reviews data', 'danger');
     }
 }
-
 // Save Bus
 async function saveBus() {
     try {
@@ -913,7 +975,6 @@ async function saveBus() {
         showNotification('Error adding bus', 'danger');
     }
 }
-
 // Save Schedule
 async function saveSchedule() {
     try {
@@ -930,16 +991,30 @@ async function saveSchedule() {
             return;
         }
         
+        // Create schedule data with field names matching backend expectations (camelCase)
         const scheduleData = {
-            routeId: parseInt(routeSelect.value),
+            routeId: parseInt(routeSelect.value), // This will be NaN if the value is not a number
             busId: parseInt(busSelect.value),
-            departureTime,
-            arrivalTime,
+            departureTime: departureTime,
+            arrivalTime: arrivalTime,
             price: parseFloat(price),
             availableSeats: parseInt(availableSeats)
         };
         
-        console.log('Saving schedule:', scheduleData);
+        console.log('=== SCHEDULE DEBUG ===');
+        console.log('Route select value:', routeSelect.value);
+        console.log('Parsed routeId:', scheduleData.routeId);
+        console.log('Bus select value:', busSelect.value);
+        console.log('Parsed busId:', scheduleData.busId);
+        
+        // Check if any values are NaN
+        if (isNaN(scheduleData.routeId) || isNaN(scheduleData.busId) || 
+            isNaN(scheduleData.price) || isNaN(scheduleData.availableSeats)) {
+            showNotification('Please ensure all numeric fields have valid values', 'danger');
+            return;
+        }
+        
+        console.log('Sending schedule data:', scheduleData);
         
         const response = await apiCall(API_PATHS.createSchedule, {
             method: 'POST',
@@ -966,7 +1041,6 @@ async function saveSchedule() {
         showNotification('Error adding schedule', 'danger');
     }
 }
-
 // Update the updateProfile function in operator.js
 async function updateProfile(e) {
     e.preventDefault();
@@ -1049,7 +1123,6 @@ async function updateProfile(e) {
         showNotification('Error updating profile: ' + error.message, 'danger');
     }
 }
-
 // Change Password
 async function changePassword(e) {
     e.preventDefault();
@@ -1097,7 +1170,6 @@ async function changePassword(e) {
         showNotification('Error changing password', 'danger');
     }
 }
-
 // Logout function
 function logout() {
     showConfirmationModal('Are you sure you want to logout?', function() {
@@ -1158,22 +1230,18 @@ function logout() {
         });
     });
 }
-
 // View Booking Details
 function viewBooking(bookingId) {
     showNotification(`Viewing booking #${bookingId}`, 'info');
 }
-
 // Print Ticket
 function printTicket(bookingId) {
     showNotification(`Printing ticket for booking #${bookingId}`, 'info');
 }
-
 // Edit Bus
 function editBus(busId) {
     showNotification(`Editing bus #${busId}`, 'info');
 }
-
 // Delete Bus
 function deleteBus(busId) {
     showConfirmationModal('Are you sure you want to delete this bus?', function() {
@@ -1181,12 +1249,10 @@ function deleteBus(busId) {
         // Add actual delete logic here
     });
 }
-
 // Edit Schedule
 function editSchedule(scheduleId) {
     showNotification(`Editing schedule #${scheduleId}`, 'info');
 }
-
 // Delete Schedule
 function deleteSchedule(scheduleId) {
     showConfirmationModal('Are you sure you want to delete this schedule?', function() {
@@ -1194,13 +1260,11 @@ function deleteSchedule(scheduleId) {
         // Add actual delete logic here
     });
 }
-
 // Helper Functions
 function formatDateTime(dateString) {
     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
     return new Date(dateString).toLocaleDateString(undefined, options);
 }
-
 function getStatusClass(status) {
     const statusClasses = {
         'confirmed': 'success',
@@ -1211,7 +1275,6 @@ function getStatusClass(status) {
     };
     return statusClasses[status] || 'secondary';
 }
-
 function getBusStatusClass(status) {
     const statusClasses = {
         'active': 'success',
@@ -1220,7 +1283,6 @@ function getBusStatusClass(status) {
     };
     return statusClasses[status] || 'secondary';
 }
-
 function getScheduleStatusClass(status) {
     const statusClasses = {
         'scheduled': 'primary',
@@ -1230,7 +1292,6 @@ function getScheduleStatusClass(status) {
     };
     return statusClasses[status] || 'secondary';
 }
-
 function generateStarRating(rating) {
     let stars = '';
     for (let i = 1; i <= 5; i++) {
@@ -1242,7 +1303,6 @@ function generateStarRating(rating) {
     }
     return stars;
 }
-
 function showNotification(message, type = 'info') {
     // Find or create notification container
     let notificationContainer = document.getElementById('notificationContainer');
@@ -1278,18 +1338,15 @@ function showNotification(message, type = 'info') {
         }, 150);
     }, 5000);
 }
-
 // Global error handlers
 window.addEventListener('error', function(event) {
     console.error('Global error:', event.error);
     showNotification('An unexpected error occurred', 'danger');
 });
-
 window.addEventListener('unhandledrejection', function(event) {
     console.error('Unhandled promise rejection:', event.reason);
     showNotification('An unexpected error occurred', 'danger');
 });
-
 // Function to show success notification
 function showSuccessNotification(message) {
     // Check if notification container exists, if not create one
