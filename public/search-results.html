@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Terminus | Search Results</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="../images/logo.png" type="image/png">
+    <link rel="stylesheet" href="../assets/css/main-styles.css">
+    <style>
+        body {
+            font-family: 'Ubuntu', sans-serif;
+            padding-top: 80px;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar {
+            background: #343a40 !important;
+            padding: 1rem 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result-card {
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid #eee;
+            background: white;
+            margin-bottom: 1.5rem;
+        }
+        
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .result-header {
+            background: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
+            color: white;
+            padding: 1rem;
+        }
+        
+        .btn-book {
+            background: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
+            border: none;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-book:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar (copy from index.html) -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="../index.html">
+            <i class="fas fa-bus me-2"></i>E-Terminus
+        </a>
+        
+        <!-- User welcome text (visible when logged in) -->
+        <span class="user-welcome d-none" id="userWelcome">
+            Welcome, <span id="usernameDisplay"></span>!
+        </span>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#reviewsModal">
+                        <i class="fas fa-star me-1"></i> Reviews
+                    </a>
+                </li>
+                
+                <!-- Dynamic Auth Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-1"></i> <span id="authStatus">Account</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <!-- Options for NOT logged-in users -->
+                        <div id="notLoggedInMenu">
+                            <li><a class="dropdown-item" href="login.html">
+                                <i class="fas fa-sign-in-alt me-2"></i>User Login
+                            </a></li>
+                            <li><a class="dropdown-item" href="register.html">
+                                <i class="fas fa-user-plus me-2"></i>Register
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="../operators/login.html">
+                                <i class="fas fa-user-shield me-2"></i>Operator Login
+                            </a></li>
+                        </div>
+                        
+                        <!-- Options for logged-in users (hidden by default) -->
+                        <div id="loggedInMenu" class="d-none">
+                            <li><a class="dropdown-item" href="#" id="dashboardLink">
+                                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="logoutMenuItem">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a></li>
+                        </div>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+    <!-- Search Results Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Search Results</h2>
+                <a href="../index.html" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i> Back to Home
+                </a>
+            </div>
+            
+            <div id="searchResults">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Searching for available buses...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Reviews Modal (copy from index.html) -->
+    <div class="modal fade" id="reviewsModal" tabindex="-1" aria-labelledby="reviewsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="reviewsModalLabel"><i class="fas fa-star me-2"></i>Share Your Experience</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="authAlert" class="alert alert-warning d-none">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Please <a href="login.html" class="alert-link">login</a> to submit a review.
+                    </div>
+                    
+                    <form id="reviewForm" class="d-none">
+                        <div class="user-info bg-light p-3 rounded mb-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">Reviewing as: <span id="userName">Loading...</span></h6>
+                                    <small class="text-muted" id="userEmail"></small>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="modalLogoutButton">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Not You?
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">What are you reviewing?</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="reviewType" id="reviewPlatform" value="platform" checked>
+                                <label class="form-check-label" for="reviewPlatform"><i class="fas fa-bus me-1"></i> E-Terminus Platform</label>
+                                <small class="text-muted d-block ms-4">Overall experience using our booking system</small>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="radio" name="reviewType" id="reviewOperator" value="operator">
+                                <label class="form-check-label" for="reviewOperator"><i class="fas fa-building me-1"></i> Specific Bus Operator</label>
+                                <small class="text-muted d-block ms-4">Experience with a particular bus company</small>
+                            </div>
+                        </div>
+                        
+                        <div id="operatorSection" class="mb-3 d-none">
+                            <label for="operatorSelect" class="form-label fw-bold">Select Bus Operator</label>
+                            <select class="form-select" id="operatorSelect" required>
+                                <option value="">Choose a bus company...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Overall Rating</label>
+                            <div class="rating-stars mb-2">
+                                <div class="d-flex justify-content-center">
+                                    <i class="fas fa-star rating-star" data-value="1"></i>
+                                    <i class="fas fa-star rating-star" data-value="2"></i>
+                                    <i class="fas fa-star rating-star" data-value="3"></i>
+                                    <i class="fas fa-star rating-star" data-value="4"></i>
+                                    <i class="fas fa-star rating-star" data-value="5"></i>
+                                </div>
+                                <input type="hidden" id="ratingValue" name="rating" required>
+                                <div class="text-center mt-2"><small id="ratingText" class="text-muted">Select your rating</small></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reviewTitle" class="form-label fw-bold">Review Title (Optional)</label>
+                            <input type="text" class="form-control" id="reviewTitle" placeholder="Brief summary of your experience">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reviewText" class="form-label fw-bold">Detailed Review</label>
+                            <textarea class="form-control" id="reviewText" rows="4" placeholder="Share your experience: punctuality, comfort, customer service, etc." required></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tripReference" class="form-label">Trip Reference (Optional)</label>
+                            <input type="text" class="form-control" id="tripReference" placeholder="Booking ID or trip details">
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Review
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);">
+                    <h5 class="modal-title text-white" id="confirmationModalLabel">Confirm Logout</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmationMessage">Are you sure you want to logout?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn" style="background: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%); color: white;" id="confirmButton">Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer (copy from index.html) -->
+    <footer class="py-4 bg-dark text-white">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-bus me-2"></i>E-Terminus</h5>
+                    <p>Zambia's trusted bus booking platform</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-white-50">About Us</a></li>
+                        <li><a href="#" class="text-white-50">Contact</a></li>
+                        <li><a href="../admin/login.html" class="text-white-50">Operator Login</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Connect</h5>
+                    <a href="#" class="text-white-50 me-2"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="text-white-50 me-2"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="text-white-50"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+            <hr class="my-4 bg-secondary">
+            <div class="text-center">
+                <small class="text-white-50">© 2025 E-Terminus. All rights reserved.</small>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/main-script.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Get search parameters from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const origin = urlParams.get('origin');
+            const destination = urlParams.get('destination');
+            const date = urlParams.get('date');
+            
+            // Load search results
+            loadSearchResults(origin, destination, date);
+        });
+        
+        function loadSearchResults(origin, destination, date) {
+            // Use relative path to API
+            const apiUrl = `../api/search_routes.php?origin=${origin}&destination=${destination}`;
+            
+            if (date) {
+                apiUrl += `&date=${date}`;
+            }
+            
+            $.ajax({
+                url: apiUrl,
+                method: 'GET',
+                dataType: 'json',
+                success: function(schedules) {
+                    const resultsContainer = $('#searchResults');
+                    
+                    if (schedules && schedules.length > 0) {
+                        let resultsHtml = `
+                            <div class="alert alert-info">
+                                Showing ${schedules.length} results for buses from ${origin} to ${destination}
+                                ${date ? ` on ${new Date(date).toLocaleDateString()}` : ''}
+                            </div>
+                        `;
+                        
+                        schedules.forEach(function(schedule) {
+                            // Use let instead of const for variables that might be reassigned
+                            let departureTime = new Date(schedule.departure_time);
+                            let arrivalTime = new Date(schedule.arrival_time);
+                            let operatorImage = `../images/operator-${schedule.operator_id}.jpg`;
+                            let busType = schedule.bus_type || 'Standard Bus';
+                            let originTerminal = schedule.origin_terminal || 'Main Terminal';
+                            
+                            // Calculate duration in hours
+                            let hours = Math.floor(schedule.duration_minutes / 60);
+                            let minutes = schedule.duration_minutes % 60;
+                            let duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                            
+                            resultsHtml += `
+                                <div class="result-card">
+                                    <div class="result-header">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h5 class="mb-0">${schedule.origin} → ${schedule.destination}</h5>
+                                                <small>${schedule.company_name}</small>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                <h4 class="mb-0">ZMW ${schedule.price}</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <img src="${operatorImage}" alt="${schedule.company_name}" class="img-fluid mb-2" onerror="this.src='../images/default-bus.png'">
+                                                <p class="mb-1"><strong>Bus Type:</strong> ${busType}</p>
+                                                <p class="mb-1"><strong>Available:</strong> ${schedule.available_seats} seats</p>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <p class="mb-1"><strong>Departure:</strong></p>
+                                                <h6>${departureTime.toLocaleDateString()}</h6>
+                                                <p>${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <p class="mb-1"><strong>Arrival:</strong></p>
+                                                <h6>${arrivalTime.toLocaleDateString()}</h6>
+                                                <p>${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                            </div>
+                                            <div class="col-md-3 d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <p class="mb-1"><strong>Duration:</strong> ${duration}</p>
+                                                    <p class="mb-1"><strong>Terminal:</strong> ${originTerminal}</p>
+                                                </div>
+                                                <button class="btn btn-book w-100" data-schedule-id="${schedule.schedule_id}">
+                                                    Book Now
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        resultsContainer.html(resultsHtml);
+                    } else {
+                        resultsContainer.html(`
+                            <div class="alert alert-warning text-center">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                No buses found for ${origin} to ${destination}
+                                ${date ? ` on ${new Date(date).toLocaleDateString()}` : ''}
+                            </div>
+                        `);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Search error:', error);
+                    $('#searchResults').html(`
+                        <div class="alert alert-danger text-center">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Error loading search results. Please try again.
+                        </div>
+                    `);
+                }
+            });
+        }
+        
+        // Handle book now button click
+        $(document).on('click', '.btn-book', function() {
+            const scheduleId = $(this).data('schedule-id');
+            
+            // Check if user is logged in
+            const currentUser = localStorage.getItem('currentUser');
+            
+            if (!currentUser) {
+                // Redirect to login page
+                window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
+                return;
+            }
+            
+            // Redirect to booking page
+            window.location.href = `booking.html?schedule_id=${scheduleId}`;
+        });
+    </script>
+</body>
+</html>

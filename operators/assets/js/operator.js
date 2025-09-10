@@ -11,6 +11,8 @@ const API_PATHS = {
     getReviews: `${BASE_URL}/api/operator/get_reviews.php`,
     createBus: `${BASE_URL}/api/operator/create_bus.php`,
     createSchedule: `${BASE_URL}/api/operator/create_schedule.php`,
+    deleteSchedule: `${BASE_URL}/api/operator/delete_schedule.php`,
+    updateSchedule: `${BASE_URL}/api/operator/update_schedule.php`,
     updateProfile: `${BASE_URL}/api/operator/update_profile.php`,
     changePassword: `${BASE_URL}/api/operator/change_password.php`
 };
@@ -544,6 +546,12 @@ function setupDashboardEventListeners() {
     const addScheduleBtn = document.getElementById('saveScheduleBtn');
     if (addScheduleBtn) {
         addScheduleBtn.addEventListener('click', saveSchedule);
+    }
+
+    // Update schedule button
+    const updateScheduleBtn = document.getElementById('updateScheduleBtn');
+    if (updateScheduleBtn) {
+        updateScheduleBtn.addEventListener('click', updateSchedule);
     }
     
     // Profile form
@@ -1250,14 +1258,147 @@ function deleteBus(busId) {
     });
 }
 // Edit Schedule
-function editSchedule(scheduleId) {
-    showNotification(`Editing schedule #${scheduleId}`, 'info');
+async function editSchedule(scheduleId) {
+    try {
+        // Fetch the current schedule data
+        const response = await fetch(`${API_PATHS.getSchedules}?schedule_id=${scheduleId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch schedule data');
+        }
+        
+        const schedules = await response.json();
+        const schedule = schedules.find(s => s.schedule_id == scheduleId);
+        
+        if (!schedule) {
+            throw new Error('Schedule not found');
+        }
+        
+        // Populate the edit modal form
+        document.getElementById('editScheduleId').value = schedule.schedule_id;
+        document.getElementById('editDepartureTime').value = formatDateTimeForInput(schedule.departure_time);
+        document.getElementById('editArrivalTime').value = formatDateTimeForInput(schedule.arrival_time);
+        document.getElementById('editPrice').value = schedule.price;
+        document.getElementById('editAvailableSeats').value = schedule.available_seats;
+        
+        // Show the edit modal
+        const editModal = new bootstrap.Modal(document.getElementById('editScheduleModal'));
+        editModal.show();
+        
+    } catch (error) {
+        console.error('Error editing schedule:', error);
+        showNotification('Error loading schedule data: ' + error.message, 'danger');
+    }
+}
+
+// Helper function to format datetime for input field
+function formatDateTimeForInput(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Update Schedule
+async function updateSchedule() {
+    try {
+        // Get form values
+        const scheduleId = document.getElementById('editScheduleId').value;
+        const departureTime = document.getElementById('editDepartureTime').value;
+        const arrivalTime = document.getElementById('editArrivalTime').value;
+        const price = document.getElementById('editPrice').value;
+        const availableSeats = document.getElementById('editAvailableSeats').value;
+        
+        if (!departureTime || !arrivalTime || !price || !availableSeats) {
+            showNotification('Please fill in all required fields', 'danger');
+            return;
+        }
+        
+        // Create schedule data with field names matching backend expectations
+        const scheduleData = {
+            departureTime: departureTime,
+            arrivalTime: arrivalTime,
+            price: parseFloat(price),
+            availableSeats: parseInt(availableSeats)
+        };
+        
+        console.log('Updating schedule:', scheduleId, scheduleData);
+        
+        const response = await fetch(`${API_PATHS.updateSchedule}?schedule_id=${scheduleId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(scheduleData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to update schedule');
+        }
+        
+        const data = await response.json();
+        console.log('Update schedule response:', data);
+        
+        if (data.success) {
+            showNotification('Schedule updated successfully', 'success');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editScheduleModal'));
+            modal.hide();
+            
+            // Reload schedules data
+            loadSchedulesData();
+        } else {
+            showNotification(data.error || 'Error updating schedule', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating schedule:', error);
+        showNotification('Error updating schedule: ' + error.message, 'danger');
+    }
 }
 // Delete Schedule
-function deleteSchedule(scheduleId) {
-    showConfirmationModal('Are you sure you want to delete this schedule?', function() {
-        showNotification(`Deleting schedule #${scheduleId}`, 'info');
-        // Add actual delete logic here
+async function deleteSchedule(scheduleId) {
+    showConfirmationModal('Are you sure you want to delete this schedule?', async function() {
+        try {
+            console.log('Deleting schedule:', scheduleId);
+            
+            const response = await fetch(`${API_PATHS.deleteSchedule}?schedule_id=${scheduleId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                }
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete schedule');
+            }
+            
+            const data = await response.json();
+            console.log('Delete schedule response:', data);
+            
+            if (data.success) {
+                showNotification('Schedule deleted successfully', 'success');
+                // Reload schedules data
+                loadSchedulesData();
+            } else {
+                showNotification(data.error || 'Error deleting schedule', 'danger');
+            }
+        } catch (error) {
+            console.error('Error deleting schedule:', error);
+            showNotification('Error deleting schedule: ' + error.message, 'danger');
+        }
     });
 }
 // Helper Functions
