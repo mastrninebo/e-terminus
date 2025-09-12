@@ -97,6 +97,24 @@ function setupEventListeners() {
     $(document).on('click', '.rating-star', handleStarClick);
     $(document).on('mouseenter', '.rating-star', handleStarHover);
     $(document).on('mouseleave', '.rating-stars', handleStarMouseLeave);
+    
+    // Add search form submission
+    $('#routeSearchForm').on('submit', handleRouteSearch);
+    
+    // Handle dynamically loaded view-route buttons
+    $(document).on('click', '.view-route', function() {
+        const origin = $(this).data('origin');
+        const destination = $(this).data('destination');
+        
+        // Set the search form values
+        $('#originSelect').val(origin);
+        $('#destinationSelect').val(destination);
+        
+        // Scroll to search form
+        $('html, body').animate({
+            scrollTop: $('.route-picker').offset().top - 100
+        }, 500);
+    });
 }
 
 // Show logout confirmation modal
@@ -153,23 +171,27 @@ async function checkAuthStatus() {
             const data = await response.json();
             if (data.authenticated && data.user) {
                 currentUser = data.user;
-                // Store user data for future use
                 localStorage.setItem('currentUser', JSON.stringify(data.user));
                 updateUIForLoggedInUser();
             } else {
-                // Clear invalid data
                 localStorage.removeItem('currentUser');
                 localStorage.removeItem('auth_token');
                 updateUIForLoggedOutUser();
             }
+        } else if (response.status === 401) {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('auth_token');
+            updateUIForLoggedOutUser();
         } else {
-            // Clear invalid data on error
             localStorage.removeItem('currentUser');
             localStorage.removeItem('auth_token');
             updateUIForLoggedOutUser();
         }
     } catch (error) {
-        console.error('Auth check failed:', error);
+        // Only log network errors, not 401s
+        if (!error.message.includes('401')) {
+            console.error('Auth check failed:', error);
+        }
         updateUIForLoggedOutUser();
     }
 }
@@ -190,11 +212,9 @@ function updateUIForLoggedInUser() {
         dashboardUrl = '/e-terminus/admin/dashboard.html';
         dashboardText = 'Admin Dashboard';
     } else if (currentUser.user_type === 'operator') {
-        // Fixed: Use the correct path with 'operators' (plural)
         dashboardUrl = '/e-terminus/operators/dashboard.html';
         dashboardText = 'Operator Dashboard';
     } else {
-        // For passengers, redirect to public dashboard page
         dashboardUrl = '/e-terminus/public/index.html';
         dashboardText = 'Dashboard';
     }
@@ -271,12 +291,12 @@ async function handleLogout(e) {
             confirmationModal.hide();
         }
         
-        // Redirect to the main landing page (same as logged-out users)
-        window.location.href = BASE_URL + '/index.html?' + new Date().getTime(); // Add timestamp to prevent caching
+        // Redirect to the main landing page
+        window.location.href = BASE_URL + '/index.html?' + new Date().getTime();
     } catch (error) {
         console.error('Logout error:', error);
         // Still redirect even if API call fails
-        window.location.href = BASE_URL + '/index.html?' + new Date().getTime(); // Add timestamp to prevent caching
+        window.location.href = BASE_URL + '/index.html?' + new Date().getTime();
     }
 }
 
@@ -308,7 +328,6 @@ async function loadOperators() {
         } else {
             console.error('Failed to load operators:', response.status);
             showError('Failed to load bus operators. Using demo data.');
-            // Load fallback operators
             loadFallbackOperators();
         }
     } catch (error) {
@@ -420,6 +439,7 @@ async function handleReviewSubmit(e) {
         $('#reviewsModal').modal('hide');
         return;
     }
+    
     const formData = {
         review_type: $('input[name="reviewType"]:checked').val(),
         rating: selectedRating,
@@ -427,6 +447,7 @@ async function handleReviewSubmit(e) {
         comment: $('#reviewText').val().trim(),
         trip_reference: $('#tripReference').val().trim()
     };
+    
     // Validation
     if (!formData.comment) {
         showError('Please provide a detailed review');
@@ -443,6 +464,7 @@ async function handleReviewSubmit(e) {
             return;
         }
     }
+    
     try {
         showLoading(true, 'Submitting review...');
         const response = await fetch(`${BASE_URL}/api/reviews/submit.php`, {
@@ -485,7 +507,11 @@ function loadPopularRoutes() {
                     <div class="card-body text-center">
                         <div class="h4 text-danger mb-3">From ${route.price}</div>
                         <p class="text-muted mb-4"><i class="fas fa-clock me-2"></i>${route.schedule}</p>
-                        <button class="btn btn-sm btn-eterminus px-4">View Buses</button>
+                        <button class="btn btn-sm btn-eterminus px-4 view-route" 
+                                data-origin="${route.from}" 
+                                data-destination="${route.to}">
+                            View Buses
+                        </button>
                     </div>
                 </div>
             </div>
@@ -501,6 +527,42 @@ function loadPopularRoutes() {
             });
         });
     }, 100);
+}
+
+// Handle route search
+function handleRouteSearch(e) {
+    e.preventDefault();
+    
+    const origin = $('#originSelect').val();
+    const destination = $('#destinationSelect').val();
+    const date = $('#travelDate').val();
+    
+    if (!origin || !destination) {
+        showNotification('Please select both origin and destination', 'warning');
+        return;
+    }
+    
+    console.log('Searching for:', { origin, destination, date });
+    
+    // Check if we're on the home page or not
+    const currentPath = window.location.pathname;
+    const homePagePaths = ['/', '/e-terminus/', '/e-terminus/index.html', 'index.html'];
+    
+    if (homePagePaths.includes(currentPath) || currentPath.endsWith('/index.html')) {
+        // On home page, redirect to search results page
+        const searchParams = new URLSearchParams({
+            origin: origin,
+            destination: destination,
+            date: date
+        });
+        
+        const redirectUrl = `${BASE_URL}/public/search-results.html?${searchParams.toString()}`;
+        console.log('Redirecting to:', redirectUrl);
+        window.location.href = redirectUrl;
+    } else {
+        // On other pages, show a notification
+        showNotification('Search functionality available on home page', 'info');
+    }
 }
 
 // Show loading state
@@ -586,6 +648,40 @@ function getCookie(name) {
     if (parts.length === 2) return parts.pop().split(';').shift();
 }
 
+// Show notification (general purpose)
+function showNotification(message, type = 'info') {
+    // Create a toast notification
+    const bgClass = type === 'success' ? 'text-bg-success' : 
+                     type === 'warning' ? 'text-bg-warning' : 
+                     type === 'danger' ? 'text-bg-danger' : 'text-bg-info';
+    
+    const toast = `
+        <div class="toast align-items-center ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    
+    // Append to toast container or create one
+    let toastContainer = $('#toastContainer');
+    if (!toastContainer.length) {
+        $('body').append('<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+        toastContainer = $('#toastContainer');
+    }
+    
+    toastContainer.append(toast);
+    $('.toast').toast('show');
+    
+    // Remove toast after it hides
+    $('.toast').on('hidden.bs.toast', function () {
+        $(this).remove();
+    });
+}
+
 // Reviews Carousel functionality
 class ReviewsCarousel {
     constructor() {
@@ -594,14 +690,23 @@ class ReviewsCarousel {
         this.container = document.querySelector('.reviews-container');
         this.indicatorsContainer = document.querySelector('.review-indicators');
         this.autoPlayInterval = null;
+        
+        // Check if required elements exist before initializing
+        if (!this.container || !this.indicatorsContainer) {
+            console.error('Review carousel elements not found. Make sure the page has elements with classes "reviews-container" and "review-indicators".');
+            return;
+        }
+        
         this.init();
     }
+    
     async init() {
         await this.loadReviews();
         this.renderReviews();
         this.setupEventListeners();
         this.startAutoPlay();
     }
+    
     async loadReviews() {
         try {
             const response = await fetch(`${BASE_URL}/api/reviews/get_reviews.php`, {
@@ -627,7 +732,10 @@ class ReviewsCarousel {
             this.showErrorMessage();
         }
     }
+    
     showNoReviewsMessage() {
+        if (!this.container) return;
+        
         this.container.innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-comments fa-3x text-muted mb-3"></i>
@@ -635,9 +743,15 @@ class ReviewsCarousel {
                 <p class="text-muted">Be the first to share your experience!</p>
             </div>
         `;
-        this.indicatorsContainer.innerHTML = '';
+        
+        if (this.indicatorsContainer) {
+            this.indicatorsContainer.innerHTML = '';
+        }
     }
+    
     showErrorMessage() {
+        if (!this.container) return;
+        
         this.container.innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
@@ -645,12 +759,23 @@ class ReviewsCarousel {
                 <p class="text-muted">Please try again later</p>
             </div>
         `;
-        this.indicatorsContainer.innerHTML = '';
+        
+        if (this.indicatorsContainer) {
+            this.indicatorsContainer.innerHTML = '';
+        }
     }
+    
     renderReviews() {
+        // Check if containers exist
+        if (!this.container || !this.indicatorsContainer) {
+            console.error('Review containers not found in the DOM');
+            return;
+        }
+        
         // Clear container
         this.container.innerHTML = '';
         this.indicatorsContainer.innerHTML = '';
+        
         // Create review cards
         this.reviews.forEach((review, index) => {
             // Create review card
@@ -658,19 +783,20 @@ class ReviewsCarousel {
             reviewCard.className = `review-card ${index === 0 ? 'active' : ''}`;
             reviewCard.innerHTML = `
                 <div class="review-content">
-                    ${this.escapeHtml(review.content)}
+                    ${this.escapeHtml(review.comment || review.content || '')}
                 </div>
                 <div class="review-author">
-                    <div class="author-avatar">${this.generateAvatar(review.author)}</div>
+                    <div class="author-avatar">${this.generateAvatar(review.author || review.username || '')}</div>
                     <div class="author-info">
-                        <h5>${this.escapeHtml(review.author)}</h5>
+                        <h5>${this.escapeHtml(review.author || review.username || 'Anonymous')}</h5>
                         <div class="star-rating">
-                            ${this.generateStars(review.rating)}
+                            ${this.generateStars(review.rating || 0)}
                         </div>
                     </div>
                 </div>
             `;
             this.container.appendChild(reviewCard);
+            
             // Create indicator
             const indicator = document.createElement('span');
             indicator.className = `indicator ${index === 0 ? 'active' : ''}`;
@@ -678,6 +804,7 @@ class ReviewsCarousel {
             this.indicatorsContainer.appendChild(indicator);
         });
     }
+    
     generateStars(rating) {
         let stars = '';
         for (let i = 1; i <= 5; i++) {
@@ -685,6 +812,7 @@ class ReviewsCarousel {
         }
         return stars;
     }
+    
     generateAvatar(author) {
         if (author) {
             // Take first two letters, uppercase
@@ -692,39 +820,56 @@ class ReviewsCarousel {
         }
         return 'GU'; // Guest User
     }
+    
     escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
+    
     setupEventListeners() {
         // Previous button
-        document.getElementById('prevReview').addEventListener('click', () => {
-            this.prevSlide();
-            this.resetAutoPlay();
-        });
+        const prevButton = document.getElementById('prevReview');
+        if (prevButton) {
+            prevButton.addEventListener('click', () => {
+                this.prevSlide();
+                this.resetAutoPlay();
+            });
+        }
+        
         // Next button
-        document.getElementById('nextReview').addEventListener('click', () => {
-            this.nextSlide();
-            this.resetAutoPlay();
-        });
+        const nextButton = document.getElementById('nextReview');
+        if (nextButton) {
+            nextButton.addEventListener('click', () => {
+                this.nextSlide();
+                this.resetAutoPlay();
+            });
+        }
+        
         // Pause on hover
-        this.container.addEventListener('mouseenter', () => this.stopAutoPlay());
-        this.container.addEventListener('mouseleave', () => this.startAutoPlay());
+        if (this.container) {
+            this.container.addEventListener('mouseenter', () => this.stopAutoPlay());
+            this.container.addEventListener('mouseleave', () => this.startAutoPlay());
+        }
     }
+    
     nextSlide() {
         if (this.reviews.length === 0) return;
         this.goToSlide((this.currentIndex + 1) % this.reviews.length);
     }
+    
     prevSlide() {
         if (this.reviews.length === 0) return;
         this.goToSlide((this.currentIndex - 1 + this.reviews.length) % this.reviews.length);
     }
+    
     goToSlide(index) {
         if (this.reviews.length === 0) return;
         
         // Update current index
         this.currentIndex = index;
+        
         // Update cards
         const cards = this.container.querySelectorAll('.review-card');
         cards.forEach((card, i) => {
@@ -735,12 +880,14 @@ class ReviewsCarousel {
                 card.classList.add('prev');
             }
         });
+        
         // Update indicators
         const indicators = this.indicatorsContainer.querySelectorAll('.indicator');
         indicators.forEach((indicator, i) => {
             indicator.classList.toggle('active', i === index);
         });
     }
+    
     startAutoPlay() {
         if (this.reviews.length <= 1) return; // Don't autoplay if only one or no reviews
         
@@ -749,12 +896,14 @@ class ReviewsCarousel {
             this.nextSlide();
         }, 5000);
     }
+    
     stopAutoPlay() {
         if (this.autoPlayInterval) {
             clearInterval(this.autoPlayInterval);
             this.autoPlayInterval = null;
         }
     }
+    
     resetAutoPlay() {
         this.stopAutoPlay();
         this.startAutoPlay();
@@ -763,5 +912,8 @@ class ReviewsCarousel {
 
 // Initialize reviews carousel when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    new ReviewsCarousel();
+    // Only initialize if the containers exist
+    if (document.querySelector('.reviews-container') && document.querySelector('.review-indicators')) {
+        new ReviewsCarousel();
+    }
 });
