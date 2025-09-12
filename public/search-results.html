@@ -63,6 +63,31 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4);
         }
+        
+        .operator-image-container {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .operator-image-container img {
+            max-height: 80px;
+            object-fit: cover;
+        }
+        
+        @media (max-width: 768px) {
+            .operator-image-container {
+                height: 60px;
+            }
+            
+            .operator-image-container img {
+                max-height: 60px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -243,29 +268,38 @@
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-md-3">
-                                                <img src="${operatorImage}" alt="${schedule.company_name}" class="img-fluid mb-2" onerror="this.src='../images/default-bus.png'">
-                                                <p class="mb-1"><strong>Bus Type:</strong> ${busType}</p>
-                                                <p class="mb-1"><strong>Available:</strong> ${schedule.available_seats} seats</p>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <p class="mb-1"><strong>Departure:</strong></p>
-                                                <h6>${departureTime.toLocaleDateString()}</h6>
-                                                <p>${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <p class="mb-1"><strong>Arrival:</strong></p>
-                                                <h6>${arrivalTime.toLocaleDateString()}</h6>
-                                                <p>${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                                            </div>
-                                            <div class="col-md-3 d-flex flex-column justify-content-between">
-                                                <div>
-                                                    <p class="mb-1"><strong>Duration:</strong> ${duration}</p>
-                                                    <p class="mb-1"><strong>Terminal:</strong> ${originTerminal}</p>
+                                            <div class="col-md-2">
+                                                <div class="operator-image-container mb-3">
+                                                    <img src="${operatorImage}" alt="${schedule.company_name}" class="img-fluid rounded" 
+                                                         onerror="this.onerror=null; this.src='https://via.placeholder.com/120x80?text=Bus+Image'">
                                                 </div>
-                                                <button class="btn btn-book w-100" data-schedule-id="${schedule.schedule_id}">
-                                                    Book Now
-                                                </button>
+                                            </div>
+                                            <div class="col-md-10">
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <p class="mb-1"><strong>Bus Type:</strong> ${busType}</p>
+                                                        <p class="mb-1"><strong>Available:</strong> ${schedule.available_seats} seats</p>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <p class="mb-1"><strong>Departure:</strong></p>
+                                                        <h6>${departureTime.toLocaleDateString()}</h6>
+                                                        <p>${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <p class="mb-1"><strong>Arrival:</strong></p>
+                                                        <h6>${arrivalTime.toLocaleDateString()}</h6>
+                                                        <p>${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                                    </div>
+                                                    <div class="col-md-3 d-flex flex-column justify-content-between">
+                                                        <div>
+                                                            <p class="mb-1"><strong>Duration:</strong> ${duration}</p>
+                                                            <p class="mb-1"><strong>Terminal:</strong> ${originTerminal}</p>
+                                                        </div>
+                                                        <button class="btn btn-book w-100" data-schedule-id="${schedule.schedule_id}">
+                                                            Book Now
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -298,21 +332,24 @@
         }
         
         // Handle book now button click
-        $(document).on('click', '.btn-book', function() {
-            const scheduleId = $(this).data('schedule-id');
-            
-            // Check if user is logged in
-            const currentUser = localStorage.getItem('currentUser');
-            
-            if (!currentUser) {
-                // Redirect to login page
-                window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
-                return;
-            }
-            
-            // Redirect to booking page
-            window.location.href = `booking.html?schedule_id=${scheduleId}`;
-        });
+$(document).on('click', '.btn-book', function() {
+    const scheduleId = $(this).data('schedule-id');
+    
+    // Check if user is logged in
+    const currentUser = localStorage.getItem('currentUser');
+    
+    if (!currentUser) {
+        // Store the schedule ID for later use after login
+        pendingScheduleId = scheduleId;
+        
+        // Show the authentication modal
+        const authModal = new bootstrap.Modal(document.getElementById('authModal'));
+        authModal.show();
+    } else {
+        // Redirect to booking page (go up one level from public/ to root)
+        window.location.href = `../booking.html?schedule_id=${scheduleId}`;
+    }
+});
     </script>
 </body>
 </html>
