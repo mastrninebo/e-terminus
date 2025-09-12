@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmation | E-Terminus</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <link rel="stylesheet" href="../assets/css/main-styles.css">
+    <style>
+        :root {
+            --gradient-primary: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
+            --dark-bg: #343a40;
+        }
+        
+        body {
+            font-family: 'Ubuntu', sans-serif;
+            padding-top: 80px;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar {
+            background: var(--dark-bg) !important;
+            padding: 1rem 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .confirmation-card {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: white;
+            margin-bottom: 1.5rem;
+        }
+        
+        .confirmation-header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .ticket-card {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            background: #f9f9f9;
+            position: relative;
+        }
+        
+        .ticket-header {
+            text-align: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px dashed #ddd;
+        }
+        
+        .ticket-header h4 {
+            color: var(--gradient-primary);
+            margin: 0;
+        }
+        
+        .ticket-body {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .ticket-left, .ticket-right {
+            flex: 1;
+        }
+        
+        .ticket-right {
+            text-align: right;
+            border-left: 2px dashed #ddd;
+            padding-left: 1rem;
+        }
+        
+        .qr-code {
+            width: 120px;
+            height: 120px;
+            margin: 1rem auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: white;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .btn-eterminus {
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-eterminus:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4);
+        }
+        
+        .btn-outline-eterminus {
+            border: 2px solid;
+            border-image: var(--gradient-primary) 1;
+            color: var(--gradient-primary);
+            background: transparent;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-outline-eterminus:hover {
+            background: var(--gradient-primary);
+            color: white;
+        }
+        
+        .payment-status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .status-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .status-failed {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: #6c757d;
+        }
+        
+        .info-value {
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .ticket-body {
+                flex-direction: column;
+            }
+            
+            .ticket-right {
+                border-left: none;
+                border-top: 2px dashed #ddd;
+                padding-left: 0;
+                padding-top: 1rem;
+                margin-top: 1rem;
+                text-align: left;
+            }
+        }
+        
+        @media print {
+            body {
+                padding-top: 0;
+            }
+            
+            .navbar, .action-buttons {
+                display: none;
+            }
+            
+            .ticket-card {
+                border: 1px solid #000;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-bus me-2"></i>E-Terminus
+            </a>
+            
+            <!-- User welcome text (visible when logged in) -->
+            <span class="user-welcome d-none" id="userWelcome">
+                Welcome, <span id="usernameDisplay"></span>!
+            </span>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <!-- Dynamic Auth Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i> <span id="authStatus">Account</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <!-- Options for NOT logged-in users -->
+                            <div id="notLoggedInMenu">
+                                <li><a class="dropdown-item" href="public/login.html">
+                                    <i class="fas fa-sign-in-alt me-2"></i>User Login
+                                </a></li>
+                                <li><a class="dropdown-item" href="public/register.html">
+                                    <i class="fas fa-user-plus me-2"></i>Register
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="operators/login.html">
+                                    <i class="fas fa-user-shield me-2"></i>Operator Login
+                                </a></li>
+                            </div>
+                            
+                            <!-- Options for logged-in users (hidden by default) -->
+                            <div id="loggedInMenu" class="d-none">
+                                <li><a class="dropdown-item" href="#" id="dashboardLink">
+                                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" id="logoutMenuItem">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                </a></li>
+                            </div>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Confirmation Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="confirmation-card">
+                        <div class="confirmation-header">
+                            <h2 class="mb-0"><i class="fas fa-check-circle me-2"></i>Booking Confirmed!</h2>
+                            <p class="mb-0">Your ticket has been successfully booked</p>
+                        </div>
+                        <div class="card-body p-4" id="confirmationContent">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3">Loading booking details...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-card">
+                        <div class="ticket-header">
+                            <h4>E-Terminus Bus Ticket</h4>
+                            <p class="mb-0">Please present this ticket when boarding</p>
+                        </div>
+                        <div class="ticket-body" id="ticketDetails">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3">Generating ticket...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons text-center mt-4">
+                        <button class="btn btn-eterminus me-2" id="downloadTicket">
+                            <i class="fas fa-download me-2"></i> Download Ticket
+                        </button>
+                        <button class="btn btn-outline-eterminus me-2" id="printTicket">
+                            <i class="fas fa-print me-2"></i> Print Ticket
+                        </button>
+                        <a href="index.html" class="btn btn-outline-secondary">
+                            <i class="fas fa-home me-2"></i> Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="py-4 bg-dark text-white">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-bus me-2"></i>E-Terminus</h5>
+                    <p>Zambia's trusted bus booking platform</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-white-50">About Us</a></li>
+                        <li><a href="#" class="text-white-50">Contact</a></li>
+                        <li><a href="admin/login.html" class="text-white-50">Operator Login</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Connect</h5>
+                    <a href="#" class="text-white-50 me-2"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="text-white-50 me-2"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="text-white-50"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+            <hr class="my-4 bg-secondary">
+            <div class="text-center">
+                <small class="text-white-50">© 2025 E-Terminus. All rights reserved.</small>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/main-script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Get booking ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingId = urlParams.get('booking_id');
+            
+            if (!bookingId) {
+                showError('No booking ID provided. Please check your booking details.');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+                return;
+            }
+            
+            // Load booking details
+            loadBookingDetails(bookingId);
+            
+            // Setup event listeners
+            setupEventListeners();
+        });
+        
+        function loadBookingDetails(bookingId) {
+            $.ajax({
+                url: `${BASE_URL}/api/bookings/get_booking.php`,
+                method: 'GET',
+                data: { booking_id: bookingId },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        displayBookingDetails(response.booking);
+                        displayTicketDetails(response.booking);
+                    } else {
+                        showError(response.message || 'Failed to load booking details.');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Error loading booking details.';
+                    showError(errorMessage);
+                }
+            });
+        }
+        
+        function displayBookingDetails(booking) {
+            const departureTime = new Date(booking.departure_time);
+            const arrivalTime = new Date(booking.arrival_time);
+            
+            const hours = Math.floor(booking.duration_minutes / 60);
+            const minutes = booking.duration_minutes % 60;
+            const duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            
+            // Format payment status
+            let paymentStatusClass = 'status-pending';
+            let paymentStatusText = 'Pending';
+            
+            if (booking.payment_status === 'success') {
+                paymentStatusClass = 'status-success';
+                paymentStatusText = 'Paid';
+            } else if (booking.payment_status === 'failed') {
+                paymentStatusClass = 'status-failed';
+                paymentStatusText = 'Failed';
+            }
+            
+            const detailsHtml = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Booking Information</h5>
+                        <div class="info-row">
+                            <span class="info-label">Booking ID:</span>
+                            <span class="info-value">#${booking.booking_id}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Booking Date:</span>
+                            <span class="info-value">${new Date(booking.booking_date).toLocaleDateString()}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Booking Status:</span>
+                            <span class="info-value">${booking.booking_status.charAt(0).toUpperCase() + booking.booking_status.slice(1)}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Payment Status:</span>
+                            <span class="info-value">
+                                <span class="payment-status ${paymentStatusClass}">${paymentStatusText}</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Trip Details</h5>
+                        <div class="info-row">
+                            <span class="info-label">Route:</span>
+                            <span class="info-value">${booking.origin} → ${booking.destination}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Departure:</span>
+                            <span class="info-value">${departureTime.toLocaleDateString()} at ${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Arrival:</span>
+                            <span class="info-value">${arrivalTime.toLocaleDateString()} at ${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Duration:</span>
+                            <span class="info-value">${duration}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Passenger Information</h5>
+                        <div class="info-row">
+                            <span class="info-label">Name:</span>
+                            <span class="info-value">${booking.passenger_name || 'N/A'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Contact:</span>
+                            <span class="info-value">${booking.passenger_phone || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Payment Details</h5>
+                        <div class="info-row">
+                            <span class="info-label">Amount Paid:</span>
+                            <span class="info-value">ZMW ${booking.amount_paid || booking.total_amount || '0.00'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Payment Method:</span>
+                            <span class="info-value">${booking.payment_method || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('#confirmationContent').html(detailsHtml);
+        }
+        
+        function displayTicketDetails(booking) {
+    const departureTime = new Date(booking.departure_time);
+    const arrivalTime = new Date(booking.arrival_time);
+    
+    const hours = Math.floor(booking.duration_minutes / 60);
+    const minutes = booking.duration_minutes % 60;
+    const duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    
+    const ticketHtml = `
+        <div class="ticket-left">
+            <div class="info-row">
+                <span class="info-label">Booking ID:</span>
+                <span class="info-value">#${booking.booking_id}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Passenger:</span>
+                <span class="info-value">${booking.passenger_name || 'N/A'}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Route:</span>
+                <span class="info-value">${booking.origin} → ${booking.destination}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Departure:</span>
+                <span class="info-value">${departureTime.toLocaleDateString()} at ${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Arrival:</span>
+                <span class="info-value">${arrivalTime.toLocaleDateString()} at ${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Duration:</span>
+                <span class="info-value">${duration}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Number of Seats:</span>
+                <span class="info-value">${booking.number_of_seats || 1}</span>
+            </div>
+        </div>
+        <div class="ticket-right">
+            <div class="qr-code" id="qrcode"></div>
+            <div class="text-center mt-2">
+                <small>Issued: ${new Date().toLocaleDateString()}</small>
+            </div>
+            <div class="text-center mt-3">
+                <small>Please present this ticket when boarding</small>
+            </div>
+        </div>
+    `;
+    
+    $('#ticketDetails').html(ticketHtml);
+    
+    // Generate QR code
+    if (booking.qr_code) {
+        // If we have a QR code string from the server, use it
+        new QRCode(document.getElementById("qrcode"), {
+            text: booking.qr_code,
+            width: 100,
+            height: 100,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    } else {
+        // Otherwise, generate a QR code with the booking ID
+        new QRCode(document.getElementById("qrcode"), {
+            text: `Booking ID: ${booking.booking_id}`,
+            width: 100,
+            height: 100,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    }
+}
+        
+        function setupEventListeners() {
+            // Download ticket
+            $('#downloadTicket').on('click', function() {
+                // We can use html2canvas or similar to capture the ticket as an image
+                // For simplicity, we'll just open a print dialog which also allows saving as PDF
+                window.print();
+            });
+            
+            // Print ticket
+            $('#printTicket').on('click', function() {
+                window.print();
+            });
+        }
+        
+        function showSuccess(message) {
+            // Create a toast notification
+            const toast = `
+                <div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas fa-check-circle me-2"></i> ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            // Append to toast container or create one
+            let toastContainer = $('#toastContainer');
+            if (!toastContainer.length) {
+                $('body').append('<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+                toastContainer = $('#toastContainer');
+            }
+            
+            toastContainer.append(toast);
+            $('.toast').toast('show');
+            
+            // Remove toast after it hides
+            $('.toast').on('hidden.bs.toast', function () {
+                $(this).remove();
+            });
+        }
+        
+        function showError(message) {
+            // Create a toast notification
+            const toast = `
+                <div class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas fa-exclamation-circle me-2"></i> ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            // Append to toast container or create one
+            let toastContainer = $('#toastContainer');
+            if (!toastContainer.length) {
+                $('body').append('<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+                toastContainer = $('#toastContainer');
+            }
+            
+            toastContainer.append(toast);
+            $('.toast').toast('show');
+            
+            // Remove toast after it hides
+            $('.toast').on('hidden.bs.toast', function () {
+                $(this).remove();
+            });
+        }
+    </script>
+</body>
+</html>

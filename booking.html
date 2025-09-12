@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="images/logo.png" type="image/png">
     <link rel="stylesheet" href="assets/css/main-styles.css">
+    <link rel="stylesheet" href="assets/css/navbar-scroll.css">
     <style>
         :root {
             --gradient-primary: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
@@ -416,7 +417,7 @@
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="payment-method" data-method="bank_transfer">
+                                    <!--<div class="payment-method" data-method="bank_transfer">
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="paymentMethod" id="bankTransfer" value="bank_transfer">
                                             <label class="form-check-label d-flex align-items-center" for="bankTransfer">
@@ -427,7 +428,7 @@
                                                 </div>
                                             </label>
                                         </div>
-                                    </div>
+                                    </div>-->
                                 </div>
                                 
                                 <div id="paymentMethodDetails">
@@ -503,6 +504,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main-script.js"></script>
+    <script src="assets/js/navbar-scroll.js"></script>
     <script>
         $(document).ready(function() {
             // Get schedule ID from URL
@@ -531,6 +533,9 @@
             payment_details: {}
         };
         
+        // Flag to prevent double execution
+        let isProcessing = false;
+        
         function initializeBooking(scheduleId) {
             // Check if user is logged in
             const currentUser = localStorage.getItem('currentUser');
@@ -547,42 +552,45 @@
             // Load schedule details
             loadScheduleDetails(scheduleId);
             
-            // Setup event listeners
-            setupEventListeners();
+            // Setup event listeners only once
+            if (!window.bookingEventListenersSetup) {
+                setupEventListeners();
+                window.bookingEventListenersSetup = true;
+            }
         }
         
         function loadScheduleDetails(scheduleId) {
-    $.ajax({
-        url: `api/schedules/get_schedule.php`,
-        method: 'GET',
-        data: { schedule_id: scheduleId },
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                currentSchedule = response.schedule;
-                displayScheduleDetails(currentSchedule);
-                updateBookingSummary();
-                
-                // Set available seats
-                $('#availableSeats').text(currentSchedule.available_seats);
-                $('#pricePerSeat').text(`ZMW ${currentSchedule.price}`);
-                
-                // Set max seats
-                if (currentSchedule.available_seats === 0) {
-                    $('#increaseSeats').prop('disabled', true);
-                    $('#proceedToPayment').prop('disabled', true);
-                    showError('No seats available for this schedule.');
+            $.ajax({
+                url: `${BASE_URL}/api/schedules/get_schedule.php`,
+                method: 'GET',
+                data: { schedule_id: scheduleId },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        currentSchedule = response.schedule;
+                        displayScheduleDetails(currentSchedule);
+                        updateBookingSummary();
+                        
+                        // Set available seats
+                        $('#availableSeats').text(currentSchedule.available_seats);
+                        $('#pricePerSeat').text(`ZMW ${currentSchedule.price}`);
+                        
+                        // Set max seats
+                        if (currentSchedule.available_seats === 0) {
+                            $('#increaseSeats').prop('disabled', true);
+                            $('#proceedToPayment').prop('disabled', true);
+                            showError('No seats available for this schedule.');
+                        }
+                    } else {
+                        showError(response.message || 'Failed to load schedule details.');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Error loading schedule details.';
+                    showError(errorMessage);
                 }
-            } else {
-                showError(response.message || 'Failed to load schedule details.');
-            }
-        },
-        error: function(xhr) {
-            const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Error loading schedule details.';
-            showError(errorMessage);
+            });
         }
-    });
-}
         
         function displayScheduleDetails(schedule) {
             const departureTime = new Date(schedule.departure_time);
@@ -612,67 +620,134 @@
         }
         
         function setupEventListeners() {
-            // Seat counter
-            $('#decreaseSeats').click(function() {
-                if (selectedSeatsCount > 1) {
-                    selectedSeatsCount--;
-                    $('#seatCount').text(selectedSeatsCount);
-                    bookingData.number_of_seats = selectedSeatsCount;
-                    updateBookingSummary();
-                }
+            // Prevent multiple initializations
+            if (window.bookingEventListenersSetup) {
+                return;
+            }
+            
+            // Remove all existing event handlers first
+            $('#decreaseSeats, #increaseSeats, #proceedToPayment, #backToSeats, .payment-method, #paymentForm').off();
+            
+            // Seat counter - using flag to prevent double execution
+            $('#decreaseSeats').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Prevent double execution
+                if (isProcessing) return;
+                isProcessing = true;
+                
+                setTimeout(() => {
+                    if (selectedSeatsCount > 1) {
+                        selectedSeatsCount--;
+                        $('#seatCount').text(selectedSeatsCount);
+                        bookingData.number_of_seats = selectedSeatsCount;
+                        updateBookingSummary();
+                    }
+                    isProcessing = false;
+                }, 100);
             });
             
-            $('#increaseSeats').click(function() {
-                if (selectedSeatsCount < currentSchedule.available_seats) {
-                    selectedSeatsCount++;
-                    $('#seatCount').text(selectedSeatsCount);
-                    bookingData.number_of_seats = selectedSeatsCount;
-                    updateBookingSummary();
-                }
+            $('#increaseSeats').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Prevent double execution
+                if (isProcessing) return;
+                isProcessing = true;
+                
+                setTimeout(() => {
+                    if (selectedSeatsCount < currentSchedule.available_seats) {
+                        selectedSeatsCount++;
+                        $('#seatCount').text(selectedSeatsCount);
+                        bookingData.number_of_seats = selectedSeatsCount;
+                        updateBookingSummary();
+                    }
+                    isProcessing = false;
+                }, 100);
             });
             
             // Proceed to payment
-            $('#proceedToPayment').click(function() {
-                if (selectedSeatsCount === 0) {
-                    showError('Please select at least one seat.');
-                    return;
-                }
+            $('#proceedToPayment').on('click', function(e) {
+                e.preventDefault();
                 
-                if (selectedSeatsCount > currentSchedule.available_seats) {
-                    showError('Not enough seats available.');
-                    return;
-                }
+                // Prevent double execution
+                if (isProcessing) return;
+                isProcessing = true;
                 
-                showSection('paymentSection');
-                updateStepIndicator(2);
+                setTimeout(() => {
+                    if (selectedSeatsCount === 0) {
+                        showError('Please select at least one seat.');
+                        isProcessing = false;
+                        return;
+                    }
+                    
+                    if (selectedSeatsCount > currentSchedule.available_seats) {
+                        showError('Not enough seats available.');
+                        isProcessing = false;
+                        return;
+                    }
+                    
+                    showSection('paymentSection');
+                    updateStepIndicator(2);
+                    isProcessing = false;
+                }, 100);
             });
             
             // Back to seat selection
-            $('#backToSeats').click(function() {
-                showSection('seatSelectionSection');
-                updateStepIndicator(1);
+            $('#backToSeats').on('click', function(e) {
+                e.preventDefault();
+                
+                // Prevent double execution
+                if (isProcessing) return;
+                isProcessing = true;
+                
+                setTimeout(() => {
+                    showSection('seatSelectionSection');
+                    updateStepIndicator(1);
+                    isProcessing = false;
+                }, 100);
             });
             
             // Payment method selection
-            $('.payment-method').click(function() {
-                $('.payment-method').removeClass('selected');
-                $(this).addClass('selected');
-                $(this).find('input[type="radio"]').prop('checked', true);
+            $('.payment-method').on('click', function(e) {
+                e.preventDefault();
                 
-                const method = $(this).data('method');
-                bookingData.payment_method = method;
-                showPaymentMethodFields(method);
+                // Prevent double execution
+                if (isProcessing) return;
+                isProcessing = true;
+                
+                setTimeout(() => {
+                    $('.payment-method').removeClass('selected');
+                    $(this).addClass('selected');
+                    $(this).find('input[type="radio"]').prop('checked', true);
+                    
+                    const method = $(this).data('method');
+                    bookingData.payment_method = method;
+                    showPaymentMethodFields(method);
+                    isProcessing = false;
+                }, 100);
             });
             
             // Payment form submission
-            $('#paymentForm').submit(function(e) {
+            $('#paymentForm').on('submit', function(e) {
                 e.preventDefault();
                 
-                if (validatePaymentForm()) {
-                    bookingData.payment_details = getPaymentDetails();
-                    processBooking();
-                }
+                // Prevent double execution
+                if (isProcessing) return;
+                isProcessing = true;
+                
+                setTimeout(() => {
+                    if (validatePaymentForm()) {
+                        bookingData.payment_details = getPaymentDetails();
+                        processBooking();
+                    }
+                    isProcessing = false;
+                }, 100);
             });
+            
+            // Mark as set up
+            window.bookingEventListenersSetup = true;
         }
         
         function showPaymentMethodFields(method) {
@@ -725,7 +800,7 @@
                     `);
                     break;
                     
-                case 'bank_transfer':
+                /* case 'bank_transfer':
                     detailsContainer.html(`
                         <div class="alert alert-info">
                             <h6>Bank Transfer Details</h6>
@@ -738,7 +813,7 @@
                             <input type="text" class="form-control" id="transactionRef" placeholder="Enter your transaction reference" required>
                         </div>
                     `);
-                    break;
+                    break; */
             }
         }
         
@@ -800,14 +875,14 @@
                     }
                     break;
                     
-                case 'bank_transfer':
+                /* case 'bank_transfer':
                     if (!$('#transactionRef').val()) {
                         $('#transactionRef').addClass('is-invalid');
                         isValid = false;
                     } else {
                         $('#transactionRef').removeClass('is-invalid');
                     }
-                    break;
+                    break; */
             }
             
             return isValid;
@@ -834,45 +909,45 @@
                     };
                     break;
                     
-                case 'bank_transfer':
+                /* case 'bank_transfer':
                     details = {
                         transaction_reference: $('#transactionRef').val()
                     };
-                    break;
+                    break; */
             }
             
             return details;
         }
         
         function processBooking() {
-    showLoading(true);
-    
-    $.ajax({
-        url: `api/bookings/create_booking.php`,
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(bookingData),
-        success: function(response) {
-            if (response.success) {
-                showSuccess('Booking successful! Redirecting to confirmation...');
-                setTimeout(() => {
-                    window.location.href = `public/booking-confirmation.html?booking_id=${response.booking_id}`;
-                }, 2000);
-            } else {
-                showError(response.message || 'Booking failed. Please try again.');
-                showLoading(false);
-            }
-        },
-        error: function(xhr) {
-            let errorMessage = 'Booking failed. Please try again.';
-            if (xhr.responseJSON && xhr.responseJSON.message) {
-                errorMessage = xhr.responseJSON.message;
-            }
-            showError(errorMessage);
-            showLoading(false);
+            showLoading(true);
+            
+            $.ajax({
+                url: `${BASE_URL}/api/bookings/create_booking.php`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(bookingData),
+                success: function(response) {
+                    if (response.success) {
+                        showSuccess('Booking successful! Redirecting to confirmation...');
+                        setTimeout(() => {
+                            window.location.href = `public/booking-confirmation.html?booking_id=${response.booking_id}`;
+                        }, 2000);
+                    } else {
+                        showError(response.message || 'Booking failed. Please try again.');
+                        showLoading(false);
+                    }
+                },
+                error: function(xhr) {
+                    let errorMessage = 'Booking failed. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    showError(errorMessage);
+                    showLoading(false);
+                }
+            });
         }
-    });
-}
         
         function updateBookingSummary() {
             const summaryContent = $('#bookingSummaryContent');
