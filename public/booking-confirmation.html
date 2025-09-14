@@ -13,198 +13,275 @@
     <link rel="icon" href="images/logo.png" type="image/png">
     <link rel="stylesheet" href="../assets/css/main-styles.css">
     <style>
-        :root {
-            --gradient-primary: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
-            --dark-bg: #343a40;
+    :root {
+        --gradient-primary: linear-gradient(135deg, rgba(255, 87, 34, 0.9) 0%, rgba(194, 24, 91, 0.9) 100%);
+        --dark-bg: #343a40;
+    }
+    
+    body {
+        font-family: 'Ubuntu', sans-serif;
+        padding-top: 80px;
+        background-color: #f8f9fa;
+    }
+    
+    .navbar {
+        background: var(--dark-bg) !important;
+        padding: 1rem 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .confirmation-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 1.5rem;
+    }
+    
+    .confirmation-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .ticket-card {
+        border: 2px dashed #ddd;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        background: #f9f9f9;
+        position: relative;
+    }
+    
+    .ticket-header {
+        text-align: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px dashed #ddd;
+    }
+    
+    .ticket-header h4 {
+        color: var(--gradient-primary);
+        margin: 0;
+    }
+    
+    .ticket-body {
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .ticket-left, .ticket-right {
+        flex: 1;
+    }
+    
+    .ticket-right {
+        text-align: right;
+        border-left: 2px dashed #ddd;
+        padding-left: 1rem;
+    }
+    
+    .qr-code {
+        width: 120px;
+        height: 120px;
+        margin: 1rem auto;
+        border: 1px solid #ddd;
+        padding: 10px;
+        background: white;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+    
+    .btn-eterminus {
+        background: var(--gradient-primary);
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .btn-eterminus:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4);
+    }
+    
+    .btn-outline-eterminus {
+        border: 2px solid;
+        border-image: var(--gradient-primary) 1;
+        color: var(--gradient-primary);
+        background: transparent;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .btn-outline-eterminus:hover {
+        background: var(--gradient-primary);
+        color: white;
+    }
+    
+    .payment-status {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .status-pending {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .status-success {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .status-failed {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .info-label {
+        font-weight: 500;
+        color: #6c757d;
+    }
+    
+    .info-value {
+        font-weight: 600;
+    }
+    
+    @media (max-width: 768px) {
+        .ticket-body {
+            flex-direction: column;
         }
         
-        body {
-            font-family: 'Ubuntu', sans-serif;
-            padding-top: 80px;
-            background-color: #f8f9fa;
+        .ticket-right {
+            border-left: none;
+            border-top: 2px dashed #ddd;
+            padding-left: 0;
+            padding-top: 1rem;
+            margin-top: 1rem;
+            text-align: left;
+        }
+    }
+    
+    /* Print Styles - Only show the ticket when printing */
+    @media print {
+        /* Hide everything except the ticket */
+        body * {
+            visibility: hidden;
         }
         
-        .navbar {
-            background: var(--dark-bg) !important;
-            padding: 1rem 0;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        /* Show only the ticket card and its contents */
+        .ticket-card, .ticket-card * {
+            visibility: visible;
         }
         
-        .confirmation-card {
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            background: white;
-            margin-bottom: 1.5rem;
-        }
-        
-        .confirmation-header {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 1.5rem;
-            text-align: center;
-        }
-        
+        /* Position the ticket to take up the whole page */
         .ticket-card {
-            border: 2px dashed #ddd;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            background: #f9f9f9;
-            position: relative;
-        }
-        
-        .ticket-header {
-            text-align: center;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px dashed #ddd;
-        }
-        
-        .ticket-header h4 {
-            color: var(--gradient-primary);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
             margin: 0;
+            padding: 20px;
+            border: 1px solid #000;
+            box-shadow: none;
+            background: white;
         }
         
+        /* Adjust ticket header for printing */
+        .ticket-header {
+            background-color: #000 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            border-bottom: 2px solid #000;
+        }
+        
+        /* Adjust ticket body for printing */
         .ticket-body {
             display: flex;
             justify-content: space-between;
+            margin-top: 20px;
         }
         
+        /* Adjust ticket sections for printing */
         .ticket-left, .ticket-right {
             flex: 1;
         }
         
         .ticket-right {
             text-align: right;
-            border-left: 2px dashed #ddd;
+            border-left: 2px solid #000;
             padding-left: 1rem;
         }
         
+        /* Adjust QR code for printing */
         .qr-code {
-            width: 120px;
-            height: 120px;
-            margin: 1rem auto;
-            border: 1px solid #ddd;
-            padding: 10px;
-            background: white;
+            border: 1px solid #000;
+            width: 100px;
+            height: 100px;
+        }
+        
+        /* Add a footer to the printed ticket */
+        .ticket-card::after {
+            content: "© 2025 E-Terminus. All rights reserved.";
+            display: block;
             text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
+            margin-top: 20px;
+            font-size: 10px;
+            color: #000;
+            visibility: visible;
         }
         
-        .btn-eterminus {
-            background: var(--gradient-primary);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            font-weight: 500;
-            transition: all 0.3s;
+        /* Hide all other elements */
+        .navbar, .confirmation-card, .action-buttons, .footer {
+            display: none !important;
         }
         
-        .btn-eterminus:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4);
+        /* Remove page margins */
+        @page {
+            margin: 0.5cm;
+            size: auto;
         }
         
-        .btn-outline-eterminus {
-            border: 2px solid;
-            border-image: var(--gradient-primary) 1;
-            color: var(--gradient-primary);
-            background: transparent;
-            padding: 10px 20px;
-            font-weight: 500;
-            transition: all 0.3s;
+        /* Ensure ticket text is black for printing */
+        .ticket-card * {
+            color: #000 !important;
         }
         
-        .btn-outline-eterminus:hover {
-            background: var(--gradient-primary);
-            color: white;
+        /* Make sure borders are black for printing */
+        .ticket-card, .ticket-header, .ticket-right, .qr-code {
+            border-color: #000 !important;
         }
-        
-        .payment-status {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
-        .status-pending {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        
-        .status-success {
-            background-color: #28a745;
-            color: white;
-        }
-        
-        .status-failed {
-            background-color: #dc3545;
-            color: white;
-        }
-        
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .info-row:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        
-        .info-label {
-            font-weight: 500;
-            color: #6c757d;
-        }
-        
-        .info-value {
-            font-weight: 600;
-        }
-        
-        @media (max-width: 768px) {
-            .ticket-body {
-                flex-direction: column;
-            }
-            
-            .ticket-right {
-                border-left: none;
-                border-top: 2px dashed #ddd;
-                padding-left: 0;
-                padding-top: 1rem;
-                margin-top: 1rem;
-                text-align: left;
-            }
-        }
-        
-        @media print {
-            body {
-                padding-top: 0;
-            }
-            
-            .navbar, .action-buttons {
-                display: none;
-            }
-            
-            .ticket-card {
-                border: 1px solid #000;
-                box-shadow: none;
-            }
-        }
-    </style>
+    }
+</style>
 </head>
 <body>
     <!-- Navbar -->

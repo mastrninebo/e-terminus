@@ -356,24 +356,24 @@ async function loadUserStats() {
             return;
         }
         
-        // Update upcoming trips count - FIXED SELECTOR
-        const upcomingTripsElement = document.querySelector('#dashboard .stat-card:nth-child(1) h2');
+        // Update upcoming trips count - USING ID SELECTOR
+        const upcomingTripsElement = document.getElementById('upcomingTripsCount');
         if (upcomingTripsElement) {
             upcomingTripsElement.textContent = stats.upcoming_trips || 0;
         } else {
             console.warn('Upcoming trips element not found');
         }
         
-        // Update completed trips count - FIXED SELECTOR
-        const completedTripsElement = document.querySelector('#dashboard .stat-card:nth-child(2) h2');
+        // Update completed trips count - USING ID SELECTOR
+        const completedTripsElement = document.getElementById('completedTripsCount');
         if (completedTripsElement) {
             completedTripsElement.textContent = stats.completed_trips || 0;
         } else {
             console.warn('Completed trips element not found');
         }
         
-        // Update pending reviews count - FIXED SELECTOR
-        const pendingReviewsElement = document.querySelector('#dashboard .stat-card:nth-child(3) h2');
+        // Update pending reviews count - USING ID SELECTOR
+        const pendingReviewsElement = document.getElementById('pendingReviewsCount');
         if (pendingReviewsElement) {
             pendingReviewsElement.textContent = stats.pending_reviews || 0;
         } else {
@@ -390,17 +390,17 @@ async function loadUserStats() {
 function setDefaultStatsValues() {
     console.log('Setting default stats values');
     
-    const upcomingTripsElement = document.querySelector('#dashboard .stat-card:first-child h2');
+    const upcomingTripsElement = document.getElementById('upcomingTripsCount');
     if (upcomingTripsElement) {
         upcomingTripsElement.textContent = '0';
     }
     
-    const completedTripsElement = document.querySelector('#dashboard .stat-card:nth-child(2) h2');
+    const completedTripsElement = document.getElementById('completedTripsCount');
     if (completedTripsElement) {
         completedTripsElement.textContent = '0';
     }
     
-    const pendingReviewsElement = document.querySelector('#dashboard .stat-card:last-child h2');
+    const pendingReviewsElement = document.getElementById('pendingReviewsCount');
     if (pendingReviewsElement) {
         pendingReviewsElement.textContent = '0';
     }
@@ -1074,24 +1074,358 @@ function setupSettingsForms() {
     console.log('Settings forms setup completed');
 }
 // View ticket details
-function viewTicketDetails(bookingId) {
-    // In a real application, this would open a modal or navigate to a ticket details page
+async function viewTicketDetails(bookingId) {
     showNotification(`Loading ticket details for booking #${bookingId}`, 'info');
     
-    // Simulate loading ticket details
-    setTimeout(() => {
-        showNotification('Ticket details loaded successfully', 'success');
-    }, 1000);
+    try {
+        console.log("Fetching booking details for ID:", bookingId);
+        
+        const response = await fetch(`${BASE_URL}/api/passenger/get_booking_details.php?booking_id=${bookingId}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+            }
+        });
+        
+        console.log("Response status:", response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log("Response data:", data);
+            
+            if (data.success && data.booking) {
+                const booking = data.booking;
+                console.log("Booking details:", booking);
+                
+                // Calculate duration if not provided
+                let duration = 'N/A';
+                if (booking.duration_minutes) {
+                    const hours = Math.floor(booking.duration_minutes / 60);
+                    const minutes = booking.duration_minutes % 60;
+                    duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                }
+                
+                // Create ticket HTML
+                const ticketHtml = `
+                    <div class="ticket-card">
+                        <div class="ticket-header">
+                            <h4>E-Terminus Bus Ticket</h4>
+                            <p class="mb-0">Please present this ticket when boarding</p>
+                        </div>
+                        <div class="ticket-body">
+                            <div class="ticket-left">
+                                <div class="info-row">
+                                    <span class="info-label">Booking ID:</span>
+                                    <span class="info-value">#${booking.booking_id}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Passenger:</span>
+                                    <span class="info-value">${booking.passenger_name || 'N/A'}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Route:</span>
+                                    <span class="info-value">${booking.from_location} → ${booking.to_location}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Departure:</span>
+                                    <span class="info-value">${formatDate(booking.departure_date)} at ${booking.departure_time}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Arrival:</span>
+                                    <span class="info-value">${formatDate(booking.departure_date)} at ${booking.arrival_time}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Duration:</span>
+                                    <span class="info-value">${duration}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Number of Seats:</span>
+                                    <span class="info-value">${booking.number_of_seats || 1}</span>
+                                </div>
+                            </div>
+                            <div class="ticket-right">
+                                <div class="qr-code" id="qrcode-${booking.booking_id}"></div>
+                                <div class="text-center mt-2">
+                                    <small>Issued: ${formatDate(booking.booking_date)}</small>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <small>Please present this ticket when boarding</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Get the ticket modal and body
+                const ticketDetailsModal = document.getElementById('ticketDetailsModal');
+                const ticketDetailsBody = document.getElementById('ticketDetailsBody');
+                
+                if (ticketDetailsModal && ticketDetailsBody) {
+                    // Check if there's an open booking details modal and close it
+                    const bookingDetailsModal = document.getElementById('bookingDetailsModal');
+                    if (bookingDetailsModal && bookingDetailsModal.classList.contains('show')) {
+                        const bookingModalInstance = bootstrap.Modal.getInstance(bookingDetailsModal);
+                        if (bookingModalInstance) {
+                            bookingModalInstance.hide();
+                        }
+                    }
+                    
+                    // Set the modal content
+                    ticketDetailsBody.innerHTML = ticketHtml;
+                    
+                    // Generate QR code if QRCode library is available
+                    if (typeof QRCode !== 'undefined') {
+                        new QRCode(document.getElementById(`qrcode-${booking.booking_id}`), {
+                            text: `Booking ID: ${booking.booking_id}`,
+                            width: 100,
+                            height: 100,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    }
+                    
+                    // Setup print button
+                    const printButton = document.getElementById('printTicketFromDetailsBtn');
+                    if (printButton) {
+                        // Remove any existing event listeners by replacing the button
+                        printButton.replaceWith(printButton.cloneNode(true));
+                        
+                        // Get the new button
+                        const newPrintButton = document.getElementById('printTicketFromDetailsBtn');
+                        
+                        // Add event listener
+                        newPrintButton.addEventListener('click', function() {
+                            // Create a temporary element for printing
+                            const printElement = document.createElement('div');
+                            printElement.className = 'print-ticket';
+                            printElement.innerHTML = ticketHtml;
+                            
+                            // Add to body temporarily
+                            document.body.appendChild(printElement);
+                            
+                            // Generate QR code again for the print element
+                            if (typeof QRCode !== 'undefined') {
+                                // Clear the QR code div first
+                                const qrCodeDiv = printElement.querySelector(`#qrcode-${booking.booking_id}`);
+                                if (qrCodeDiv) {
+                                    qrCodeDiv.innerHTML = '';
+                                    new QRCode(qrCodeDiv, {
+                                        text: `Booking ID: ${booking.booking_id}`,
+                                        width: 100,
+                                        height: 100,
+                                        colorDark: "#000000",
+                                        colorLight: "#ffffff",
+                                        correctLevel: QRCode.CorrectLevel.H
+                                    });
+                                }
+                            }
+                            
+                            // Print the ticket
+                            window.print();
+                            
+                            // Remove the temporary element after printing
+                            setTimeout(() => {
+                                document.body.removeChild(printElement);
+                            }, 1000);
+                        });
+                    }
+                    
+                    // Show the modal after a short delay to ensure the previous modal is fully closed
+                    setTimeout(() => {
+                        const modal = new bootstrap.Modal(ticketDetailsModal);
+                        modal.show();
+                    }, 300);
+                    
+                    showNotification('Ticket details loaded successfully', 'success');
+                } else {
+                    console.error("Ticket details modal not found");
+                    showNotification('Error: Unable to display ticket details', 'danger');
+                }
+            } else {
+                console.error("API returned error:", data.message);
+                showNotification(data.message || 'Failed to load ticket details', 'danger');
+            }
+        } else {
+            const errorText = await response.text();
+            console.error("getBookingDetails error response:", errorText);
+            showNotification(`Error loading ticket details: ${response.status} ${response.statusText}`, 'danger');
+        }
+    } catch (error) {
+        console.error("Error loading ticket details:", error);
+        showNotification(`Error loading ticket details: ${error.message}`, 'danger');
+    }
 }
 // View booking details
-function viewBookingDetails(bookingId) {
-    // In a real application, this would open a modal or navigate to a booking details page
+async function viewBookingDetails(bookingId) {
     showNotification(`Loading booking details for booking #${bookingId}`, 'info');
     
-    // Simulate loading booking details
-    setTimeout(() => {
-        showNotification('Booking details loaded successfully', 'success');
-    }, 1000);
+    try {
+        console.log("Fetching booking details for ID:", bookingId);
+        
+        const response = await fetch(`${BASE_URL}/api/passenger/get_booking_details.php?booking_id=${bookingId}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+            }
+        });
+        
+        console.log("Response status:", response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log("Response data:", data);
+            
+            if (data.success && data.booking) {
+                const booking = data.booking;
+                console.log("Booking details:", booking);
+                
+                // Calculate duration if not provided
+                let duration = 'N/A';
+                if (booking.duration_minutes) {
+                    const hours = Math.floor(booking.duration_minutes / 60);
+                    const minutes = booking.duration_minutes % 60;
+                    duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                }
+                
+                // Populate the modal with booking details
+                const detailsHtml = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Booking Information</h5>
+                            <p><strong>Booking ID:</strong> #${booking.booking_id}</p>
+                            <p><strong>Date:</strong> ${formatDate(booking.booking_date)}</p>
+                            <p><strong>Status:</strong> <span class="badge ${getStatusClass(booking.booking_status)}">${formatStatus(booking.booking_status)}</span></p>
+                            <p><strong>Price:</strong> ZMW ${parseFloat(booking.price).toFixed(2)}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Trip Information</h5>
+                            <p><strong>Route:</strong> ${booking.from_location} → ${booking.to_location}</p>
+                            <p><strong>Departure:</strong> ${formatDate(booking.departure_date)} at ${booking.departure_time}</p>
+                            <p><strong>Arrival:</strong> ${formatDate(booking.departure_date)} at ${booking.arrival_time}</p>
+                            <p><strong>Operator:</strong> ${booking.operator_name}</p>
+                            <p><strong>Bus:</strong> ${booking.plate_number}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5>Passenger Information</h5>
+                            <p><strong>Name:</strong> ${booking.passenger_name}</p>
+                            <p><strong>Email:</strong> ${booking.passenger_email}</p>
+                            <p><strong>Phone:</strong> ${booking.passenger_phone || 'Not provided'}</p>
+                        </div>
+                    </div>
+                `;
+                
+                const bookingDetailsBody = document.getElementById('bookingDetailsBody');
+                if (bookingDetailsBody) {
+                    bookingDetailsBody.innerHTML = detailsHtml;
+                    
+                    // Setup print button
+                    const printButton = document.getElementById('printTicketBtn');
+                    if (printButton) {
+                        printButton.onclick = function() {
+                            // Create a temporary element for the ticket with the same style as booking-confirmation
+                            const ticketElement = document.createElement('div');
+                            ticketElement.className = 'print-ticket';
+                            ticketElement.innerHTML = `
+                                <div class="ticket-card">
+                                    <div class="ticket-header">
+                                        <h4>E-Terminus Bus Ticket</h4>
+                                        <p class="mb-0">Please present this ticket when boarding</p>
+                                    </div>
+                                    <div class="ticket-body">
+                                        <div class="ticket-left">
+                                            <div class="info-row">
+                                                <span class="info-label">Booking ID:</span>
+                                                <span class="info-value">#${booking.booking_id}</span>
+                                            </div>
+                                            <div class="info-row">
+                                                <span class="info-label">Passenger:</span>
+                                                <span class="info-value">${booking.passenger_name || 'N/A'}</span>
+                                            </div>
+                                            <div class="info-row">
+                                                <span class="info-label">Route:</span>
+                                                <span class="info-value">${booking.from_location} → ${booking.to_location}</span>
+                                            </div>
+                                            <div class="info-row">
+                                                <span class="info-label">Departure:</span>
+                                                <span class="info-value">${formatDate(booking.departure_date)} at ${booking.departure_time}</span>
+                                            </div>
+                                            <div class="info-row">
+                                                <span class="info-label">Arrival:</span>
+                                                <span class="info-value">${formatDate(booking.departure_date)} at ${booking.arrival_time}</span>
+                                            </div>
+                                            <div class="info-row">
+                                                <span class="info-label">Duration:</span>
+                                                <span class="info-value">${duration}</span>
+                                            </div>
+                                            <div class="info-row">
+                                                <span class="info-label">Number of Seats:</span>
+                                                <span class="info-value">${booking.number_of_seats || 1}</span>
+                                            </div>
+                                        </div>
+                                        <div class="ticket-right">
+                                            <div class="qr-code" id="qrcode-${booking.booking_id}"></div>
+                                            <div class="text-center mt-2">
+                                                <small>Issued: ${formatDate(booking.booking_date)}</small>
+                                            </div>
+                                            <div class="text-center mt-3">
+                                                <small>Please present this ticket when boarding</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Add to body temporarily
+                            document.body.appendChild(ticketElement);
+                            
+                            // Generate QR code
+                            new QRCode(document.getElementById(`qrcode-${booking.booking_id}`), {
+                                text: `Booking ID: ${booking.booking_id}`,
+                                width: 100,
+                                height: 100,
+                                colorDark: "#000000",
+                                colorLight: "#ffffff",
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                            
+                            // Print the ticket
+                            window.print();
+                            
+                            // Remove the temporary element after printing
+                            setTimeout(() => {
+                                document.body.removeChild(ticketElement);
+                            }, 1000);
+                        };
+                    }
+                    
+                    // Show the modal
+                    const bookingModal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
+                    bookingModal.show();
+                    
+                    showNotification('Booking details loaded successfully', 'success');
+                } else {
+                    console.error("Booking details body element not found");
+                    showNotification('Error: Unable to display booking details', 'danger');
+                }
+            } else {
+                console.error("API returned error:", data.message);
+                showNotification(data.message || 'Failed to load booking details', 'danger');
+            }
+        } else {
+            const errorText = await response.text();
+            console.error("getBookingDetails error response:", errorText);
+            showNotification(`Error loading booking details: ${response.status} ${response.statusText}`, 'danger');
+        }
+    } catch (error) {
+        console.error("Error loading booking details:", error);
+        showNotification(`Error loading booking details: ${error.message}`, 'danger');
+    }
 }
 // Cancel a booking
 async function cancelBooking(bookingId) {

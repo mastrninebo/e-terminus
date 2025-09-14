@@ -9,219 +9,10 @@
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/back-button.css">
+    <link rel="stylesheet" href="assets/css/main-styles.css">
     <link rel="stylesheet" href="../../e-terminus/assets/css/navbar-scroll.css">
     <style>
-        :root {
-            --gradient-primary: linear-gradient(135deg, #FF5722 0%, #C2185B 100%);
-            --gradient-primary-hover: linear-gradient(135deg, #E64A19 0%, #880E4F 100%);
-            --gradient-primary-light: linear-gradient(135deg, #FF8A65 0%, #E91E63 100%);
-        }
         
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            padding-top: 56px; /* For mobile header */
-        }
-        
-        /* Mobile Header */
-        .mobile-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 56px;
-            background: #343a40;
-            z-index: 1040;
-            display: flex;
-            align-items: center;
-            padding: 0 15px;
-        }
-        
-        .mobile-header .brand {
-            color: white;
-            font-weight: bold;
-            margin-left: 10px;
-        }
-        
-        .mobile-header .menu-toggle {
-            color: white;
-            font-size: 1.5rem;
-            background: none;
-            border: none;
-        }
-        
-        /*.mobile-header .logout-btn {
-            color: white;
-            font-size: 1rem;
-            background: none;
-            border: none;
-            margin-left: auto;
-        }*/
-        
-        /* Sidebar */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: -250px;
-            width: 250px;
-            height: 100vh;
-            background-color: #343a40;
-            z-index: 1050;
-            transition: all 0.3s;
-            overflow-y: auto;
-        }
-        
-        .sidebar.show {
-            left: 0;
-        }
-        
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.75);
-            border-radius: 5px;
-            margin: 2px 10px;
-            padding: 10px 15px;
-            transition: all 0.3s;
-        }
-        
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            color: white;
-            background: var(--gradient-primary);
-        }
-        
-        .sidebar .nav-link i {
-            width: 20px;
-            text-align: center;
-            margin-right: 10px;
-        }
-        
-        /* Main Content */
-        .main-content {
-            margin-left: 0;
-            padding: 1rem;
-            transition: all 0.3s;
-        }
-        
-        /* Desktop styles */
-        @media (min-width: 992px) {
-            body {
-                padding-top: 0;
-            }
-            .mobile-header {
-                display: none;
-            }
-            .sidebar {
-                left: 0;
-            }
-            .main-content {
-                margin-left: 250px;
-                padding: 1.5rem;
-            }
-        }
-        /* Shared Styles */
-        .bg-gradient-primary {
-            background: var(--gradient-primary) !important;
-        }
-        
-        .btn-gradient-primary {
-            background: var(--gradient-primary);
-            border: none;
-            color: white;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-gradient-primary:hover {
-            background: var(--gradient-primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        
-        .card-gradient-header {
-            background: var(--gradient-primary);
-            color: white;
-            border-bottom: none;
-        }
-        
-        .user-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid rgba(255,255,255,0.2);
-        }
-        
-        .quick-action-card {
-            border: none;
-            border-radius: 10px;
-            transition: all 0.3s;
-        }
-        
-        .quick-action-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        
-        .stat-card {
-            border: none;
-            border-radius: 10px;
-            transition: all 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-        }
-        
-        /* Notification container styles */
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            width: 300px;
-        }
-        
-        /* Responsive Tables */
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        /* Compact styling for mobile */
-        @media (max-width: 767.98px) {
-            table {
-                font-size: 0.85rem;
-            }
-            th, td {
-                padding: 0.5rem;
-            }
-            .btn {
-                padding: 0.25rem 0.5rem;
-                font-size: 0.875rem;
-            }
-            h2 {
-                font-size: 1.5rem;
-            }
-            h4 {
-                font-size: 1.25rem;
-            }
-            .card-body {
-                padding: 1rem;
-            }
-        }
-        
-        /* Adjust card layout on small screens */
-        @media (max-width: 575.98px) {
-            .row > [class^="col-"] {
-                margin-bottom: 15px;
-            }
-            .d-flex {
-                flex-direction: column;
-            }
-            .text-end {
-                text-align: left !important;
-                margin-top: 10px;
-            }
-        }
     </style>
     <link rel="icon" href="images/logo.png" type="image/png">
 </head>
@@ -235,9 +26,6 @@
             <i class="fas fa-bars"></i>
         </button>
         <div class="brand">E-Terminus Passenger</div>
-        <!--<button class="logout-btn" id="mobileLogoutBtn">
-            <i class="fas fa-sign-out-alt"></i>
-        </button>-->
     </header>
     
     <!-- Sidebar -->
@@ -347,7 +135,6 @@
                                     <div class="d-flex justify-content-between flex-wrap">
                                         <div class="mb-2 mb-md-0">
                                             <p class="mb-1"><i class="fas fa-ticket-alt me-2"></i>Ticket #ET-789456</p>
-                                            <!-- <p class="mb-1"><i class="fas fa-chair me-2"></i>Seat 14B</p> -->
                                         </div>
                                         <div class="text-md-end">
                                             <button class="btn btn-outline-primary view-ticket" data-id="ET-789456">
@@ -660,9 +447,53 @@
             </div>
         </div>
     </div>
+
+    <!-- Booking Details Modal -->
+    <div class="modal fade" id="bookingDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header card-gradient-header">
+                    <h5 class="modal-title">Booking Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="bookingDetailsBody">
+                    <!-- Booking details will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-gradient-primary" id="printTicketBtn">
+                        <i class="fas fa-print me-1"></i> Print Ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Details Modal -->
+    <div class="modal fade" id="ticketDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header card-gradient-header">
+                    <h5 class="modal-title">Ticket Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="ticketDetailsBody">
+                    <!-- Ticket details will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-gradient-primary" id="printTicketFromDetailsBtn">
+                        <i class="fas fa-print me-1"></i> Print Ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <!-- Bootstrap & Popper JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- QRCode Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Custom Dashboard JS -->
     <script src="assets/js/dashboard.js"></script>
     <script src="../../e-terminus/assets/js/navbar-scroll.js"></script>

@@ -277,11 +277,39 @@
     opacity: 0;
     transition: all 0.3s ease;
 }
+    
+/* Add these new styles for orange carousel controls */
+    .reviews-carousel .carousel-control-prev,
+    .reviews-carousel .carousel-control-next {
+        background-color: rgba(255, 87, 34, 0.7);
+        opacity: 0.5;
+        transition: all 0.3s ease;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        top: 50%;
+        transform: translateY(-50%);
+    }
 
-.reviews-carousel:hover .carousel-control-prev,
-.reviews-carousel:hover .carousel-control-next {
-    opacity: 1;
-}
+    .reviews-carousel:hover .carousel-control-prev,
+    .reviews-carousel:hover .carousel-control-next {
+        opacity: 1;
+        background-color: rgba(255, 87, 34, 0.9);
+        box-shadow: 0 2px 8px rgba(255, 87, 34, 0.4);
+    }
+
+    .reviews-carousel .carousel-control-prev {
+        left: 10px;
+    }
+
+    .reviews-carousel .carousel-control-next {
+        right: 10px;
+    }
+
+    .reviews-carousel .carousel-control-prev-icon,
+    .reviews-carousel .carousel-control-next-icon {
+        filter: brightness(0) invert(1);
+    }
 
 .carousel-control-prev {
     left: -20px;
