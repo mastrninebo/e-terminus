@@ -1,49 +1,23 @@
 const BASE_URL = window.location.origin + '/e-terminus';
 let currentUser = null;
 let confirmationCallback = null;
-
-// Main initialization
-document.addEventListener('DOMContentLoaded', function() {
-    checkAuthStatus();
-    setupEventListeners();
-    loadDashboardData();
-    handleTabSwitching();
-    setupLogoutButtons();
-});
-
-// Check if user is authenticated
-async function checkAuthStatus() {
-    try {
-        const token = localStorage.getItem('auth_token') || getCookie('auth_token');
-        
-        const response = await fetch(`${BASE_URL}/api/auth/check_session.php`, {
-            credentials: 'include',
-            headers: token ? {
-                'Authorization': `Bearer ${token}`,
-                'Cache-Control': 'no-cache'
-            } : {}
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.authenticated && data.user) {
-                currentUser = data.user;
-                updateUIForLoggedInUser();
-                loadDashboardData();
-            } else {
-                // Not authenticated, redirect to login
-                window.location.href = `${BASE_URL}/public/login.html`;
-            }
-        } else {
-            // Authentication failed, redirect to login
-            window.location.href = `${BASE_URL}/public/login.html`;
-        }
-    } catch (error) {
-        console.error('Auth check failed:', error);
-        window.location.href = `${BASE_URL}/public/login.html`;
-    }
-}
-
+// API Paths - using absolute paths (keeping /api/passenger/ as requested)
+const API_PATHS = {
+    checkSession: `${BASE_URL}/api/auth/check_session.php`, // Note: Using check-session.php with hyphen
+    getStats: `${BASE_URL}/api/passenger/get_stats.php`,
+    getUpcomingTrips: `${BASE_URL}/api/passenger/get_upcoming_trips.php`,
+    getRecentActivity: `${BASE_URL}/api/passenger/get_recent_activity.php`,
+    getBookings: `${BASE_URL}/api/passenger/get_booking.php`,
+    getCompletedTrips: `${BASE_URL}/api/passenger/get_completed_trips.php`,
+    getReviews: `${BASE_URL}/api/passenger/get_reviews.php`,
+    getPendingReviews: `${BASE_URL}/api/passenger/get_pending_reviews.php`,
+    getSettings: `${BASE_URL}/api/passenger/get_settings.php`,
+    updateProfile: `${BASE_URL}/api/passenger/update_profile.php`,
+    changePassword: `${BASE_URL}/api/passenger/change_password.php`,
+    updateNotifications: `${BASE_URL}/api/passenger/update_notifications.php`,
+    cancelBooking: `${BASE_URL}/api/passenger/cancel_booking.php`,
+    logout: `${BASE_URL}/api/auth/logout.php`
+};
 // Helper function to get cookies
 function getCookie(name) {
     const value = `; ${document.cookie}`;
@@ -51,14 +25,76 @@ function getCookie(name) {
     if (parts.length === 2) return parts.pop().split(';').shift();
     return null;
 }
-
+// Main initialization
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded');
+    
+    // Check if we're on dashboard
+    if (document.getElementById('sidebar')) {
+        console.log('Setting up dashboard');
+        checkAuthStatus();
+        setupEventListeners();
+        handleTabSwitching();
+        setupLogoutButtons();
+    }
+});
+// Check Authentication Status - FIXED to match working version
+async function checkAuthStatus() {
+    console.log('Checking passenger auth status...');
+    
+    try {
+        const token = localStorage.getItem('auth_token') || getCookie('auth_token');
+        console.log('Token exists:', !!token);
+        
+        const response = await fetch(API_PATHS.checkSession, {
+            credentials: 'include',
+            headers: token ? {
+                'Authorization': `Bearer ${token}`,
+                'Cache-Control': 'no-cache'
+            } : {}
+        });
+        
+        console.log('Session check response status:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Session data:', data);
+            
+            if (data.authenticated && data.user) {
+                currentUser = data.user;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                updateUIForLoggedInUser();
+                loadDashboardData();
+            } else {
+                console.log('Not authenticated, redirecting to login');
+                window.location.href = `${BASE_URL}/public/login.html`;
+            }
+        } else {
+            console.log('Authentication failed, redirecting to login');
+            window.location.href = `${BASE_URL}/public/login.html`;
+        }
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = `${BASE_URL}/public/login.html`;
+    }
+}
 // Update UI for logged-in user
 function updateUIForLoggedInUser() {
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.error('No current user data for UI update');
+        return;
+    }
     
     // Update user info in sidebar
-    document.querySelector('.sidebar h5').textContent = currentUser.username || 'User';
-    document.querySelector('.sidebar small').textContent = `Member since ${new Date(currentUser.created_at || '2024').getFullYear()}`;
+    const sidebarName = document.querySelector('.sidebar h5');
+    if (sidebarName) {
+        sidebarName.textContent = currentUser.username || 'User';
+    }
+    
+    const sidebarMemberSince = document.querySelector('.sidebar small');
+    if (sidebarMemberSince) {
+        sidebarMemberSince.textContent = `Member since ${new Date(currentUser.created_at || '2024').getFullYear()}`;
+    }
     
     // Update user avatar
     const avatarImg = document.querySelector('.user-avatar');
@@ -66,14 +102,17 @@ function updateUIForLoggedInUser() {
         avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=random`;
         avatarImg.alt = currentUser.username;
     }
+    
+    console.log('UI update completed');
 }
-
 // Setup event listeners
 function setupEventListeners() {
-    // Mobile menu toggle
-    const mobileToggle = document.getElementById('mobileMenuToggle');
-    const sidebar = document.getElementById('sidebar');
+    console.log('Setting up event listeners');
     
+    const sidebar = document.getElementById('sidebar');
+    const mobileToggle = document.getElementById('mobileMenuToggle');
+    
+    // Toggle sidebar on mobile
     if (mobileToggle && sidebar) {
         mobileToggle.addEventListener('click', function() {
             sidebar.classList.toggle('show');
@@ -91,6 +130,7 @@ function setupEventListeners() {
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(event) {
             if (window.innerWidth < 992 && 
+                sidebar && 
                 !sidebar.contains(event.target) && 
                 event.target !== mobileToggle && 
                 !mobileToggle.contains(event.target)) {
@@ -106,79 +146,6 @@ function setupEventListeners() {
             window.location.href = `${BASE_URL}/index.html`;
         });
     }
-    
-    // Back to home button
-    const backHomeBtn = document.querySelector('.btn-outline-secondary');
-    if (backHomeBtn && backHomeBtn.textContent.includes('Back to Home')) {
-        // The button already has an href attribute, so no need to add a click listener
-    }
-    
-    // View ticket button
-    document.querySelectorAll('.btn-outline-primary').forEach(btn => {
-        if (btn.textContent.includes('View Ticket')) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const bookingId = this.getAttribute('data-id');
-                if (bookingId) {
-                    viewTicketDetails(bookingId);
-                } else {
-                    showNotification('Ticket details would be shown here', 'info');
-                }
-            });
-        }
-    });
-    
-    // Cancel booking button
-    document.querySelectorAll('.btn-outline-danger').forEach(btn => {
-        if (btn.textContent.includes('Cancel')) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const bookingId = this.getAttribute('data-id');
-                if (bookingId) {
-                    if (confirm('Are you sure you want to cancel this booking?')) {
-                        cancelBooking(bookingId);
-                    }
-                } else {
-                    showNotification('Booking cancelled successfully', 'success');
-                }
-            });
-        }
-    });
-    
-    // Rate trip button
-    document.querySelectorAll('.btn-outline-primary').forEach(btn => {
-        if (btn.textContent.includes('Rate Trip')) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const bookingId = this.getAttribute('data-id');
-                if (bookingId) {
-                    window.location.href = `${BASE_URL}/public/review.html?booking_id=${bookingId}`;
-                } else {
-                    window.location.href = `${BASE_URL}/index.html#reviewsModal`;
-                }
-            });
-        }
-    });
-    
-    // Quick action buttons
-    document.querySelectorAll('.quick-action-card .btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const text = this.textContent.trim();
-            
-            if (text.includes('Find a Bus')) {
-                window.location.href = `${BASE_URL}/index.html`;
-            } else if (text.includes('Booking History')) {
-                // Switch to bookings tab
-                const bookingsTab = document.querySelector('[href="#bookings"]');
-                if (bookingsTab) {
-                    bookingsTab.click();
-                }
-            } else if (text.includes('Leave a Review')) {
-                window.location.href = `${BASE_URL}/public/reviews.html`;
-            }
-        });
-    });
     
     // Handle tab switching to load data when needed
     document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
@@ -197,17 +164,41 @@ function setupEventListeners() {
             }
         });
     });
+    
+    console.log('Event listeners setup completed');
 }
-
+// Handle tab switching
+function handleTabSwitching() {
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    const navLinks = document.querySelectorAll('.nav-link[data-bs-toggle="tab"]'); // Only select links that are actually tabs
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            const target = this.getAttribute('href');
+            // Make sure target is valid before using it as a selector
+            if (target && target !== '#' && target.startsWith('#')) {
+                tabPanes.forEach(pane => pane.classList.remove('show', 'active'));
+                const targetPane = document.querySelector(target);
+                if (targetPane) {
+                    targetPane.classList.add('show', 'active');
+                }
+            }
+        });
+    });
+}
 // Setup logout buttons
 function setupLogoutButtons() {
+    console.log('Setting up logout buttons');
+    
     // Setup confirmation modal button
     const confirmButton = document.getElementById('confirmButton');
     if (confirmButton) {
         confirmButton.addEventListener('click', function() {
             // Hide the modal
             const confirmationModal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
-            confirmationModal.hide();
+            if (confirmationModal) {
+                confirmationModal.hide();
+            }
             
             // Execute the callback if it exists
             if (confirmationCallback) {
@@ -216,118 +207,31 @@ function setupLogoutButtons() {
             }
         });
     }
-
-    // Logout buttons
-    const logoutBtn = document.getElementById('logoutBtn');
-    const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function(e) {
+    
+    // Logout buttons - use querySelectorAll for safety
+    const logoutButtons = document.querySelectorAll('#logoutBtn, #mobileLogoutBtn');
+    console.log('Found logout buttons:', logoutButtons.length);
+    
+    logoutButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
             e.preventDefault();
+            console.log('Logout button clicked');
             showConfirmationModal('Are you sure you want to logout?', function() {
                 performLogout();
             });
         });
-    }
-
-    if (mobileLogoutBtn) {
-        mobileLogoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            showConfirmationModal('Are you sure you want to logout?', function() {
-                performLogout();
-            });
-        });
-    }
-}
-
-// Function to show confirmation modal
-function showConfirmationModal(message, callback) {
-    // Set the message
-    document.getElementById('confirmationMessage').textContent = message;
-    
-    // Store the callback
-    confirmationCallback = callback;
-    
-    // Show the modal
-    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
-    confirmationModal.show();
-}
-
-// Function to perform logout
-function performLogout() {
-    console.log("=== PASSENGER LOGOUT START ===");
-    
-    // Step 1: Get the token before clearing it
-    const token = localStorage.getItem('auth_token');
-    
-    // Step 2: Clear ALL authentication data from localStorage
-    console.log("Clearing localStorage items...");
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('userData');
-    
-    // Clear any other potential auth-related items
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.includes('token') || key.includes('auth') || key.includes('user')) {
-            console.log("Removing additional auth item:", key);
-            localStorage.removeItem(key);
-        }
-    }
-    
-    // Step 3: Clear all authentication cookies
-    console.log("Clearing cookies...");
-    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
-    // Step 4: Call server logout endpoint to invalidate session
-    console.log("Calling server logout endpoint...");
-    fetch(`${BASE_URL}/api/auth/logout.php`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Logout request failed');
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Server logout response:', data);
-    })
-    .catch(error => {
-        console.error('Error during server logout:', error);
-    })
-    .finally(() => {
-        console.log("=== PASSENGER LOGOUT COMPLETE ===");
-        
-        // Step 5: Force redirect to home page with cache-busting
-        console.log("Redirecting to home page...");
-        window.location.href = `${BASE_URL}/index.html?` + new Date().getTime();
     });
-}
-
-// Handle tab switching
-function handleTabSwitching() {
-    const tabPanes = document.querySelectorAll('.tab-pane');
-    const navLinks = document.querySelectorAll('.nav-link');
     
-    navLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            const target = this.getAttribute('href');
-            tabPanes.forEach(pane => pane.classList.remove('show', 'active'));
-            document.querySelector(target).classList.add('show', 'active');
-        });
-    });
+    console.log('Logout buttons setup completed');
 }
-
-// Load dashboard data
+// Load Dashboard Data
 async function loadDashboardData() {
-    if (!currentUser) return;
+    console.log('Loading dashboard data...');
+    
+    if (!currentUser) {
+        console.error('No current user data available');
+        return;
+    }
     
     try {
         // Show loading state
@@ -354,7 +258,6 @@ async function loadDashboardData() {
         hideLoadingState();
     }
 }
-
 // Show loading state
 function showLoadingState() {
     // Add loading indicators to stat cards
@@ -386,62 +289,128 @@ function showLoadingState() {
         `;
     }
 }
-
 // Hide loading state
 function hideLoadingState() {
-    // Loading indicators will be replaced by actual data
+    // Remove loading indicators from stat cards if they exist
+    document.querySelectorAll('#dashboard .stat-card h2').forEach(el => {
+        if (el.innerHTML.includes('spinner-border')) {
+            el.textContent = '0';
+        }
+    });
+    
+    // Remove loading indicator from next trip section if it exists
+    const nextTripElement = document.querySelector('#dashboard .card.mb-4 .card-body .row');
+    if (nextTripElement && nextTripElement.innerHTML.includes('spinner-border')) {
+        nextTripElement.innerHTML = `
+            <div class="col-12 text-center py-4">
+                <p class="text-muted">No upcoming trips found</p>
+            </div>
+        `;
+    }
+    
+    // Remove loading indicator from recent activity if it exists
+    const activityContainer = document.querySelector('#dashboard .list-group');
+    if (activityContainer && activityContainer.innerHTML.includes('spinner-border')) {
+        activityContainer.innerHTML = `
+            <div class="text-center py-4">
+                <p class="text-muted">No recent activity</p>
+            </div>
+        `;
+    }
 }
-
-// Load user statistics
+// Load user statistics - IMPROVED error handling and DOM checks
 async function loadUserStats() {
+    console.log('Loading user stats...');
+    
     try {
-        const response = await fetch(`${BASE_URL}/api/user/get_stats.php`, {
+        const token = localStorage.getItem('auth_token') || getCookie('auth_token');
+        console.log('Using token for getStats:', token ? 'Token present' : 'No token');
+        
+        const response = await fetch(API_PATHS.getStats, {
             method: 'GET',
             credentials: 'include',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('auth_token') || getCookie('auth_token')}`
+                'Authorization': `Bearer ${token}`
             }
         });
         
-        if (response.ok) {
-            const stats = await response.json();
-            
-            // Update upcoming trips count
-            const upcomingTripsElement = document.querySelector('#dashboard .stat-card:first-child h2');
-            if (upcomingTripsElement && stats.upcoming_trips !== undefined) {
-                upcomingTripsElement.textContent = stats.upcoming_trips;
-            }
-            
-            // Update completed trips count
-            const completedTripsElement = document.querySelector('#dashboard .stat-card:nth-child(2) h2');
-            if (completedTripsElement && stats.completed_trips !== undefined) {
-                completedTripsElement.textContent = stats.completed_trips;
-            }
-            
-            // Update pending reviews count
-            const pendingReviewsElement = document.querySelector('#dashboard .stat-card:last-child h2');
-            if (pendingReviewsElement && stats.pending_reviews !== undefined) {
-                pendingReviewsElement.textContent = stats.pending_reviews;
-            }
-        } else {
-            // If API fails, use default values
-            document.querySelector('#dashboard .stat-card:first-child h2').textContent = '0';
-            document.querySelector('#dashboard .stat-card:nth-child(2) h2').textContent = '0';
-            document.querySelector('#dashboard .stat-card:last-child h2').textContent = '0';
+        console.log('getStats response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('getStats error response:', errorText);
+            showNotification(`Server error: ${errorText}`, 'danger');
+            // Set default values and return
+            setDefaultStatsValues();
+            return;
         }
+        
+        const stats = await response.json();
+        console.log('Stats data:', stats);
+        
+        // Check if stats is valid
+        if (!stats || typeof stats !== 'object') {
+            console.error('Invalid stats data received:', stats);
+            showNotification('Invalid statistics data received from server', 'danger');
+            setDefaultStatsValues();
+            return;
+        }
+        
+        // Update upcoming trips count - FIXED SELECTOR
+        const upcomingTripsElement = document.querySelector('#dashboard .stat-card:nth-child(1) h2');
+        if (upcomingTripsElement) {
+            upcomingTripsElement.textContent = stats.upcoming_trips || 0;
+        } else {
+            console.warn('Upcoming trips element not found');
+        }
+        
+        // Update completed trips count - FIXED SELECTOR
+        const completedTripsElement = document.querySelector('#dashboard .stat-card:nth-child(2) h2');
+        if (completedTripsElement) {
+            completedTripsElement.textContent = stats.completed_trips || 0;
+        } else {
+            console.warn('Completed trips element not found');
+        }
+        
+        // Update pending reviews count - FIXED SELECTOR
+        const pendingReviewsElement = document.querySelector('#dashboard .stat-card:nth-child(3) h2');
+        if (pendingReviewsElement) {
+            pendingReviewsElement.textContent = stats.pending_reviews || 0;
+        } else {
+            console.warn('Pending reviews element not found');
+        }
+        
     } catch (error) {
         console.error('Error loading user stats:', error);
-        // If there's an error, use default values
-        document.querySelector('#dashboard .stat-card:first-child h2').textContent = '0';
-        document.querySelector('#dashboard .stat-card:nth-child(2) h2').textContent = '0';
-        document.querySelector('#dashboard .stat-card:last-child h2').textContent = '0';
+        showNotification(`Error loading stats: ${error.message}`, 'danger');
+        setDefaultStatsValues();
     }
 }
-
+// Helper function to set default values
+function setDefaultStatsValues() {
+    console.log('Setting default stats values');
+    
+    const upcomingTripsElement = document.querySelector('#dashboard .stat-card:first-child h2');
+    if (upcomingTripsElement) {
+        upcomingTripsElement.textContent = '0';
+    }
+    
+    const completedTripsElement = document.querySelector('#dashboard .stat-card:nth-child(2) h2');
+    if (completedTripsElement) {
+        completedTripsElement.textContent = '0';
+    }
+    
+    const pendingReviewsElement = document.querySelector('#dashboard .stat-card:last-child h2');
+    if (pendingReviewsElement) {
+        pendingReviewsElement.textContent = '0';
+    }
+}
 // Load upcoming trips
 async function loadUpcomingTrips() {
+    console.log('Loading upcoming trips...');
+    
     try {
-        const response = await fetch(`${BASE_URL}/api/user/get_upcoming_trips.php`, {
+        const response = await fetch(API_PATHS.getUpcomingTrips, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -451,6 +420,7 @@ async function loadUpcomingTrips() {
         
         if (response.ok) {
             const trips = await response.json();
+            console.log('Upcoming trips data:', trips);
             
             const nextTripElement = document.querySelector('#dashboard .card.mb-4 .card-body .row');
             if (nextTripElement) {
@@ -468,7 +438,6 @@ async function loadUpcomingTrips() {
                             <div class="d-flex justify-content-between flex-wrap">
                                 <div class="mb-2 mb-md-0">
                                     <p class="mb-1"><i class="fas fa-ticket-alt me-2"></i>Ticket #${nextTrip.booking_id}</p>
-                                    ${nextTrip.seat_number ? `<p class="mb-1"><i class="fas fa-chair me-2"></i>Seat ${nextTrip.seat_number}</p>` : ''}
                                 </div>
                                 <div class="text-md-end">
                                     <button class="btn btn-outline-primary view-ticket" data-id="${nextTrip.booking_id}">
@@ -522,11 +491,12 @@ async function loadUpcomingTrips() {
         }
     }
 }
-
 // Load recent activity
 async function loadRecentActivity() {
+    console.log('Loading recent activity...');
+    
     try {
-        const response = await fetch(`${BASE_URL}/api/user/get_recent_activity.php`, {
+        const response = await fetch(API_PATHS.getRecentActivity, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -536,6 +506,8 @@ async function loadRecentActivity() {
         
         if (response.ok) {
             const activities = await response.json();
+            console.log('Recent activity data:', activities);
+            
             const activityContainer = document.querySelector('#dashboard .list-group');
             
             if (activityContainer) {
@@ -591,11 +563,12 @@ async function loadRecentActivity() {
         }
     }
 }
-
-// Load bookings data
+// Load bookings data - FIXED API PATH and improved error handling
 async function loadBookingsData() {
+    console.log('Loading bookings data...');
+    
     try {
-        const response = await fetch(`${BASE_URL}/api/user/get_bookings.php`, {
+        const response = await fetch(API_PATHS.getBookings, { // Now using get_booking.php (singular)
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -603,79 +576,96 @@ async function loadBookingsData() {
             }
         });
         
-        if (response.ok) {
-            const bookings = await response.json();
-            const bookingsTable = document.querySelector('#bookings table tbody');
-            
-            if (bookingsTable) {
-                if (bookings.length > 0) {
-                    let bookingsHtml = '';
-                    bookings.forEach(booking => {
-                        const statusClass = getStatusClass(booking.status);
-                        const statusText = formatStatus(booking.status);
-                        
-                        bookingsHtml += `
-                            <tr>
-                                <td>#${booking.booking_id}</td>
-                                <td>${booking.from_location} → ${booking.to_location}</td>
-                                <td>${formatDate(booking.booking_date)}</td>
-                                <td><span class="badge ${statusClass}">${statusText}</span></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary view-booking" data-id="${booking.booking_id}">
-                                        <i class="fas fa-eye"></i> View
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
+        console.log('getBookings response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('getBookings error response:', errorText);
+            showNotification(`Server error: ${errorText}`, 'danger');
+            setDefaultBookingsValues();
+            return;
+        }
+        
+        const bookings = await response.json();
+        console.log('Bookings data:', bookings);
+        
+        // Check if bookings is valid
+        if (!bookings || !Array.isArray(bookings)) {
+            console.error('Invalid bookings data received:', bookings);
+            showNotification('Invalid bookings data received from server', 'danger');
+            setDefaultBookingsValues();
+            return;
+        }
+        
+        const bookingsTable = document.querySelector('#bookings table tbody');
+        
+        if (bookingsTable) {
+            if (bookings.length > 0) {
+                let bookingsHtml = '';
+                bookings.forEach(booking => {
+                    const statusClass = getStatusClass(booking.status);
+                    const statusText = formatStatus(booking.status);
                     
-                    bookingsTable.innerHTML = bookingsHtml;
-                    
-                    // Add event listeners to view buttons
-                    document.querySelectorAll('.view-booking').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const bookingId = this.getAttribute('data-id');
-                            viewBookingDetails(bookingId);
-                        });
-                    });
-                } else {
-                    bookingsTable.innerHTML = `
+                    bookingsHtml += `
                         <tr>
-                            <td colspan="5" class="text-center py-3 text-muted">No bookings found</td>
+                            <td>#${booking.booking_id}</td>
+                            <td>${booking.from_location} → ${booking.to_location}</td>
+                            <td>${formatDate(booking.booking_date)}</td>
+                            <td><span class="badge ${statusClass}">${statusText}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary view-booking" data-id="${booking.booking_id}">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                            </td>
                         </tr>
                     `;
-                }
-            }
-        } else {
-            // Handle API error
-            const bookingsTable = document.querySelector('#bookings table tbody');
-            if (bookingsTable) {
+                });
+                
+                bookingsTable.innerHTML = bookingsHtml;
+                
+                // Add event listeners to view buttons
+                document.querySelectorAll('.view-booking').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const bookingId = this.getAttribute('data-id');
+                        viewBookingDetails(bookingId);
+                    });
+                });
+            } else {
                 bookingsTable.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center py-3 text-muted">Unable to load bookings</td>
+                        <td colspan="5" class="text-center py-3 text-muted">No bookings found</td>
                     </tr>
                 `;
             }
+        } else {
+            console.warn('Bookings table not found');
+            setDefaultBookingsValues();
         }
+        
     } catch (error) {
         console.error('Error loading bookings data:', error);
-        // Handle error
-        const bookingsTable = document.querySelector('#bookings table tbody');
-        if (bookingsTable) {
-            bookingsTable.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center py-3 text-muted">Unable to load bookings</td>
-                </tr>
-            `;
-        }
+        showNotification(`Error loading bookings: ${error.message}`, 'danger');
+        setDefaultBookingsValues();
     }
 }
-
+// Helper function to set default bookings values
+function setDefaultBookingsValues() {
+    const bookingsTable = document.querySelector('#bookings table tbody');
+    if (bookingsTable) {
+        bookingsTable.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-3 text-muted">Unable to load bookings</td>
+            </tr>
+        `;
+    }
+}
 // Load trips data for My Trips tab
 async function loadTripsData() {
+    console.log('Loading trips data...');
+    
     try {
         // Load upcoming trips
-        const upcomingResponse = await fetch(`${BASE_URL}/api/user/get_upcoming_trips.php`, {
+        const upcomingResponse = await fetch(API_PATHS.getUpcomingTrips, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -685,6 +675,8 @@ async function loadTripsData() {
         
         if (upcomingResponse.ok) {
             const upcomingTrips = await upcomingResponse.json();
+            console.log('Upcoming trips data:', upcomingTrips);
+            
             const upcomingContainer = document.querySelector('#upcoming .list-group');
             
             if (upcomingContainer) {
@@ -730,7 +722,7 @@ async function loadTripsData() {
         }
         
         // Load completed trips
-        const completedResponse = await fetch(`${BASE_URL}/api/user/get_completed_trips.php`, {
+        const completedResponse = await fetch(API_PATHS.getCompletedTrips, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -740,6 +732,8 @@ async function loadTripsData() {
         
         if (completedResponse.ok) {
             const completedTrips = await completedResponse.json();
+            console.log('Completed trips data:', completedTrips);
+            
             const completedContainer = document.querySelector('#completed .list-group');
             
             if (completedContainer) {
@@ -781,12 +775,13 @@ async function loadTripsData() {
         showNotification('Error loading trips data', 'danger');
     }
 }
-
 // Load reviews data
 async function loadReviewsData() {
+    console.log('Loading reviews data...');
+    
     try {
         // Load user reviews
-        const reviewsResponse = await fetch(`${BASE_URL}/api/user/get_reviews.php`, {
+        const reviewsResponse = await fetch(API_PATHS.getReviews, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -796,6 +791,8 @@ async function loadReviewsData() {
         
         if (reviewsResponse.ok) {
             const reviews = await reviewsResponse.json();
+            console.log('Reviews data:', reviews);
+            
             const reviewsContainer = document.querySelector('#my-reviews .list-group');
             
             if (reviewsContainer) {
@@ -839,7 +836,7 @@ async function loadReviewsData() {
         }
         
         // Load pending reviews
-        const pendingResponse = await fetch(`${BASE_URL}/api/user/get_pending_reviews.php`, {
+        const pendingResponse = await fetch(API_PATHS.getPendingReviews, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -849,6 +846,8 @@ async function loadReviewsData() {
         
         if (pendingResponse.ok) {
             const pendingReviews = await pendingResponse.json();
+            console.log('Pending reviews data:', pendingReviews);
+            
             const pendingContainer = document.querySelector('#pending-reviews .list-group');
             
             if (pendingContainer) {
@@ -889,11 +888,12 @@ async function loadReviewsData() {
         showNotification('Error loading reviews data', 'danger');
     }
 }
-
 // Load user settings
 async function loadUserSettings() {
+    console.log('Loading user settings...');
+    
     try {
-        const response = await fetch(`${BASE_URL}/api/user/get_settings.php`, {
+        const response = await fetch(API_PATHS.getSettings, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -903,29 +903,42 @@ async function loadUserSettings() {
         
         if (response.ok) {
             const settings = await response.json();
+            console.log('Settings data:', settings);
             
-            // Update profile form
-            document.getElementById('firstName').value = settings.first_name || '';
-            document.getElementById('lastName').value = settings.last_name || '';
-            document.getElementById('username').value = settings.username || '';
-            document.getElementById('email').value = settings.email || '';
-            document.getElementById('phone').value = settings.phone || '';
-            document.getElementById('address').value = settings.address || '';
+            // Update profile form using safe functions
+            setElementValue('username', settings.username);
+            setElementValue('email', settings.email);
+            setElementValue('phone', settings.phone);
             
-            // Update notification preferences
-            document.getElementById('emailNotifications').checked = settings.email_notifications !== false;
-            document.getElementById('smsNotifications').checked = settings.sms_notifications === true;
-            document.getElementById('promotionalNotifications').checked = settings.promotional_notifications !== false;
-            document.getElementById('tripReminders').checked = settings.trip_reminders !== false;
+            // Update read-only display fields
+            setElementValue('userTypeDisplay', settings.user_type ? 
+                settings.user_type.charAt(0).toUpperCase() + settings.user_type.slice(1) : 
+                'Passenger');
+            
+            setElementValue('createdAtDisplay', settings.created_at ? 
+                formatDate(settings.created_at) : 
+                'Unknown');
+            
+            // Update notification preferences using safe functions
+            setElementChecked('emailNotifications', settings.email_notifications !== false);
+            setElementChecked('smsNotifications', settings.sms_notifications === true);
+            setElementChecked('promotionalNotifications', settings.promotional_notifications !== false);
+            setElementChecked('tripReminders', settings.trip_reminders !== false);
+            
+        } else {
+            const errorText = await response.text();
+            console.error('getSettings error response:', errorText);
+            showNotification(`Error loading settings: ${errorText}`, 'danger');
         }
     } catch (error) {
         console.error('Error loading user settings:', error);
-        showNotification('Error loading user settings', 'danger');
+        showNotification(`Error loading settings: ${error.message}`, 'danger');
     }
 }
-
 // Setup settings form handlers
 function setupSettingsForms() {
+    console.log('Setting up settings forms...');
+    
     // Profile form
     const profileForm = document.getElementById('profileForm');
     if (profileForm) {
@@ -933,16 +946,13 @@ function setupSettingsForms() {
             e.preventDefault();
             
             const formData = {
-                first_name: document.getElementById('firstName').value,
-                last_name: document.getElementById('lastName').value,
                 username: document.getElementById('username').value,
                 email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                address: document.getElementById('address').value
+                phone: document.getElementById('phone').value
             };
             
             try {
-                const response = await fetch(`${BASE_URL}/api/user/update_profile.php`, {
+                const response = await fetch(API_PATHS.updateProfile, {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -958,6 +968,7 @@ function setupSettingsForms() {
                         showNotification('Profile updated successfully', 'success');
                         // Update current user data
                         currentUser = { ...currentUser, ...formData };
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
                         updateUIForLoggedInUser();
                     } else {
                         showNotification(result.message || 'Failed to update profile', 'danger');
@@ -988,7 +999,7 @@ function setupSettingsForms() {
             }
             
             try {
-                const response = await fetch(`${BASE_URL}/api/user/change_password.php`, {
+                const response = await fetch(API_PATHS.changePassword, {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -1033,7 +1044,7 @@ function setupSettingsForms() {
             };
             
             try {
-                const response = await fetch(`${BASE_URL}/api/user/update_notifications.php`, {
+                const response = await fetch(API_PATHS.updateNotifications, {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -1059,8 +1070,9 @@ function setupSettingsForms() {
             }
         });
     }
+    
+    console.log('Settings forms setup completed');
 }
-
 // View ticket details
 function viewTicketDetails(bookingId) {
     // In a real application, this would open a modal or navigate to a ticket details page
@@ -1071,7 +1083,6 @@ function viewTicketDetails(bookingId) {
         showNotification('Ticket details loaded successfully', 'success');
     }, 1000);
 }
-
 // View booking details
 function viewBookingDetails(bookingId) {
     // In a real application, this would open a modal or navigate to a booking details page
@@ -1082,11 +1093,10 @@ function viewBookingDetails(bookingId) {
         showNotification('Booking details loaded successfully', 'success');
     }, 1000);
 }
-
 // Cancel a booking
 async function cancelBooking(bookingId) {
     try {
-        const response = await fetch(`${BASE_URL}/api/user/cancel_booking.php`, {
+        const response = await fetch(API_PATHS.cancelBooking, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -1115,13 +1125,101 @@ async function cancelBooking(bookingId) {
         showNotification('Error cancelling booking', 'danger');
     }
 }
-
+// Function to show confirmation modal
+function showConfirmationModal(message, callback) {
+    // Set the message
+    const confirmationMessage = document.getElementById('confirmationMessage');
+    if (confirmationMessage) {
+        confirmationMessage.textContent = message;
+    }
+    
+    // Store the callback
+    confirmationCallback = callback;
+    
+    // Show the modal with error handling
+    try {
+        const modalElement = document.getElementById('confirmationModal');
+        if (!modalElement) {
+            console.error('Confirmation modal element not found');
+            // Fallback to native confirm
+            if (confirm(message)) {
+                callback();
+            }
+            return;
+        }
+        
+        const confirmationModal = new bootstrap.Modal(modalElement);
+        confirmationModal.show();
+    } catch (error) {
+        console.error('Error showing modal:', error);
+        // Fallback to native confirm
+        if (confirm(message)) {
+            callback();
+        }
+    }
+}
+// Function to perform logout
+function performLogout() {
+    console.log("=== PASSENGER LOGOUT START ===");
+    
+    // Step 1: Get the token before clearing it
+    const token = localStorage.getItem('auth_token') || getCookie('auth_token');
+    
+    // Step 2: Clear ALL authentication data from localStorage
+    console.log("Clearing localStorage items...");
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userData');
+    
+    // Clear any other potential auth-related items
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.includes('token') || key.includes('auth') || key.includes('user')) {
+            console.log("Removing additional auth item:", key);
+            localStorage.removeItem(key);
+        }
+    }
+    
+    // Step 3: Clear all authentication cookies
+    console.log("Clearing cookies...");
+    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'PHPSESSID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    
+    // Step 4: Call server logout endpoint to invalidate session
+    console.log("Calling server logout endpoint...");
+    fetch(API_PATHS.logout, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Logout request failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Server logout response:', data);
+    })
+    .catch(error => {
+        console.error('Error during server logout:', error);
+    })
+    .finally(() => {
+        console.log("=== PASSENGER LOGOUT COMPLETE ===");
+        
+        // Step 5: Force redirect to home page with cache-busting
+        console.log("Redirecting to home page...");
+        window.location.href = `${BASE_URL}/index.html?` + new Date().getTime();
+    });
+}
 // Helper functions
 function formatDate(dateString) {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
 }
-
 function getActivityIcon(type) {
     const icons = {
         'booking': 'fas fa-ticket-alt',
@@ -1131,7 +1229,6 @@ function getActivityIcon(type) {
     };
     return icons[type] || 'fas fa-info-circle';
 }
-
 function getTimeAgo(dateString) {
     const date = new Date(dateString);
     const now = new Date();
@@ -1157,7 +1254,6 @@ function getTimeAgo(dateString) {
     const diffInYears = Math.floor(diffInDays / 365);
     return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
 }
-
 function getStatusClass(status) {
     const statusClasses = {
         'confirmed': 'bg-success',
@@ -1167,11 +1263,9 @@ function getStatusClass(status) {
     };
     return statusClasses[status] || 'bg-secondary';
 }
-
 function formatStatus(status) {
     return status.charAt(0).toUpperCase() + status.slice(1);
 }
-
 function showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
@@ -1198,3 +1292,31 @@ function showNotification(message, type = 'info') {
         }, 150);
     }, 5000);
 }
+// Safe element value setter function
+function setElementValue(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.value = value || '';
+    } else {
+        console.warn(`Element with id '${elementId}' not found`);
+    }
+}
+
+// Safe element checked setter function
+function setElementChecked(elementId, checked) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.checked = !!checked;
+    } else {
+        console.warn(`Element with id '${elementId}' not found`);
+    }
+}
+// Global error handlers
+window.addEventListener('error', function(event) {
+    console.error('Global error:', event.error);
+    showNotification('An unexpected error occurred', 'danger');
+});
+window.addEventListener('unhandledrejection', function(event) {
+    console.error('Unhandled promise rejection:', event.reason);
+    showNotification('An unexpected error occurred', 'danger');
+});

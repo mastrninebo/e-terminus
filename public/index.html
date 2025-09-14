@@ -50,13 +50,13 @@
             border: none;
         }
         
-        .mobile-header .logout-btn {
+        /*.mobile-header .logout-btn {
             color: white;
             font-size: 1rem;
             background: none;
             border: none;
             margin-left: auto;
-        }
+        }*/
         
         /* Sidebar */
         .sidebar {
@@ -230,7 +230,7 @@
     <div id="notificationContainer" class="notification-container"></div>
     
     <!-- Mobile Header -->
-    <header class="mobile-header">
+    <header class="mobile-header navbar">
         <button class="menu-toggle" id="mobileMenuToggle">
             <i class="fas fa-bars"></i>
         </button>
@@ -305,33 +305,33 @@
                 <div class="tab-pane fade show active" id="dashboard">
                     <div class="row mb-4">
                         <div class="col-md-4 mb-3">
-                            <div class="card stat-card bg-gradient-primary text-white h-100">
+                            <div class="card stat-card bg-gradient-primary text-white h-100" id="upcomingTripsCard">
                                 <div class="card-body">
                                     <h5 class="card-title"><i class="fas fa-suitcase me-2"></i>Upcoming Trips</h5>
-                                    <h2 class="card-text">2</h2>
+                                    <h2 class="card-text" id="upcomingTripsCount">2</h2>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <div class="card stat-card bg-success text-white h-100">
+                            <div class="card stat-card bg-success text-white h-100" id="completedTripsCard">
                                 <div class="card-body">
                                     <h5 class="card-title"><i class="fas fa-check-circle me-2"></i>Completed Trips</h5>
-                                    <h2 class="card-text">5</h2>
+                                    <h2 class="card-text" id="completedTripsCount">5</h2>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <div class="card stat-card bg-warning text-dark h-100">
+                            <div class="card stat-card bg-warning text-dark h-100" id="pendingReviewsCard">
                                 <div class="card-body">
                                     <h5 class="card-title"><i class="fas fa-star me-2"></i>Pending Reviews</h5>
-                                    <h2 class="card-text">1</h2>
+                                    <h2 class="card-text" id="pendingReviewsCount">1</h2>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Upcoming Trip -->
-                    <div class="card mb-4">
+                    <div class="card mb-4" id="nextTripSection">
                         <div class="card-header card-gradient-header">
                             <i class="fas fa-road me-2"></i>Next Trip
                         </div>
@@ -350,7 +350,7 @@
                                             <!-- <p class="mb-1"><i class="fas fa-chair me-2"></i>Seat 14B</p> -->
                                         </div>
                                         <div class="text-md-end">
-                                            <button class="btn btn-outline-primary">
+                                            <button class="btn btn-outline-primary view-ticket" data-id="ET-789456">
                                                 <i class="fas fa-ticket-alt me-1"></i> View Ticket
                                             </button>
                                         </div>
@@ -388,7 +388,7 @@
                                     <i class="fas fa-history me-2"></i>Recent Activity
                                 </div>
                                 <div class="card-body">
-                                    <div class="list-group">
+                                    <div class="list-group" id="recentActivityList">
                                         <a href="#" class="list-group-item list-group-item-action">
                                             <div class="d-flex justify-content-between">
                                                 <div>
@@ -440,7 +440,7 @@
                                                 </div>
                                                 <div>
                                                     <span class="badge bg-primary me-2">Departs in 2 days</span>
-                                                    <button class="btn btn-sm btn-outline-danger">
+                                                    <button class="btn btn-sm btn-outline-danger cancel-trip" data-id="ET-789456">
                                                         <i class="fas fa-times"></i> Cancel
                                                     </button>
                                                 </div>
@@ -456,7 +456,7 @@
                                                     <h5 class="mb-1">Ndola → Lusaka</h5>
                                                     <small class="text-muted">June 28, 2025 • Seat 22A</small>
                                                 </div>
-                                                <button class="btn btn-sm btn-outline-primary">
+                                                <button class="btn btn-sm btn-outline-primary rate-trip" data-id="ET-789455">
                                                     <i class="fas fa-star"></i> Rate Trip
                                                 </button>
                                             </div>
@@ -472,7 +472,7 @@
                 <div class="tab-pane fade" id="bookings">
                     <div class="card">
                         <div class="card-header card-gradient-header">
-                            <i class="fas fa-ticket-alt me-2"></i>My Bookings
+                            <i class="fas fa-ticket-alt"></i>My Bookings
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -486,14 +486,14 @@
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="bookingsTableBody">
                                         <tr>
                                             <td>#ET-789456</td>
                                             <td>Lusaka → Livingstone</td>
                                             <td>2025-07-15</td>
                                             <td><span class="badge bg-success">Confirmed</span></td>
                                             <td>
-                                                <button class="btn btn-sm btn-outline-primary">
+                                                <button class="btn btn-sm btn-outline-primary view-booking" data-id="ET-789456">
                                                     <i class="fas fa-eye"></i> View
                                                 </button>
                                             </td>
@@ -563,34 +563,36 @@
                                 </li>
                             </ul>
                             <div class="tab-content mt-3" id="settingsTabContent">
+                                <!-- Simplified profile form -->
                                 <div class="tab-pane fade show active" id="profile">
                                     <form id="profileForm">
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <label for="firstName" class="form-label">First Name</label>
-                                                <input type="text" class="form-control" id="firstName" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="lastName" class="form-label">Last Name</label>
-                                                <input type="text" class="form-control" id="lastName" required>
-                                            </div>
-                                        </div>
                                         <div class="mb-3">
                                             <label for="username" class="form-label">Username</label>
                                             <input type="text" class="form-control" id="username" required>
+                                            <small class="text-muted">This is how you'll be identified in the system</small>
                                         </div>
+                                        
                                         <div class="mb-3">
                                             <label for="email" class="form-label">Email</label>
                                             <input type="email" class="form-control" id="email" required>
                                         </div>
+                                        
                                         <div class="mb-3">
                                             <label for="phone" class="form-label">Phone Number</label>
                                             <input type="tel" class="form-control" id="phone">
                                         </div>
+                                        
+                                        <!-- Read-only system fields -->
                                         <div class="mb-3">
-                                            <label for="address" class="form-label">Address</label>
-                                            <textarea class="form-control" id="address" rows="2"></textarea>
+                                            <label class="form-label">Account Type</label>
+                                            <input type="text" class="form-control" id="userTypeDisplay" readonly>
                                         </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Member Since</label>
+                                            <input type="text" class="form-control" id="createdAtDisplay" readonly>
+                                        </div>
+                                        
                                         <button type="submit" class="btn btn-gradient-primary">Save Changes</button>
                                     </form>
                                 </div>

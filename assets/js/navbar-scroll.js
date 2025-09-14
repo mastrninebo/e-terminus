@@ -5,6 +5,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastScrollTop = 0;
     let scrollTimeout;
     
+    // Check if navbar exists before proceeding
+    if (!navbar) {
+        console.warn('Navbar element not found, navbar-scroll.js will not be active');
+        return; // Exit early if no navbar found
+    }
+    
     window.addEventListener('scroll', function() {
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         
