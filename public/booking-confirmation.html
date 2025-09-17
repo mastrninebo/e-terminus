@@ -559,13 +559,27 @@
             $('#confirmationContent').html(detailsHtml);
         }
         
-        function displayTicketDetails(booking) {
+       // In public/booking-confirmation.html, update the displayTicketDetails function
+
+function displayTicketDetails(booking) {
     const departureTime = new Date(booking.departure_time);
     const arrivalTime = new Date(booking.arrival_time);
     
     const hours = Math.floor(booking.duration_minutes / 60);
     const minutes = booking.duration_minutes % 60;
     const duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    
+    // Format payment status
+    let paymentStatusClass = 'status-pending';
+    let paymentStatusText = 'Pending';
+    
+    if (booking.payment_status === 'success') {
+        paymentStatusClass = 'status-success';
+        paymentStatusText = 'Paid';
+    } else if (booking.payment_status === 'failed') {
+        paymentStatusClass = 'status-failed';
+        paymentStatusText = 'Failed';
+    }
     
     const ticketHtml = `
         <div class="ticket-left">
@@ -596,6 +610,12 @@
             <div class="info-row">
                 <span class="info-label">Number of Seats:</span>
                 <span class="info-value">${booking.number_of_seats || 1}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Payment Status:</span>
+                <span class="info-value">
+                    <span class="payment-status ${paymentStatusClass}">${paymentStatusText}</span>
+                </span>
             </div>
         </div>
         <div class="ticket-right">

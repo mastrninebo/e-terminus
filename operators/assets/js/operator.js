@@ -14,7 +14,8 @@ const API_PATHS = {
     deleteSchedule: `${BASE_URL}/api/operator/delete_schedule.php`,
     updateSchedule: `${BASE_URL}/api/operator/update_schedule.php`,
     updateProfile: `${BASE_URL}/api/operator/update_profile.php`,
-    changePassword: `${BASE_URL}/api/operator/change_password.php`
+    changePassword: `${BASE_URL}/api/operator/change_password.php`,
+    getAttention: `${BASE_URL}/api/operator/attention.php`
 };
 // Function to show confirmation modal
 function showConfirmationModal(message, callback) {
@@ -66,8 +67,27 @@ document.addEventListener('DOMContentLoaded', function() {
         setupDashboardEventListeners();
         // Initialize schedule modal bus loading
         setupScheduleModalBusLoading();
+        // Setup attention refresh button
+        setupAttentionRefreshButton();
     }
 });
+// Function to setup attention refresh button
+function setupAttentionRefreshButton() {
+    const refreshAttentionBtn = document.getElementById('refreshAttentionBtn');
+    if (refreshAttentionBtn) {
+        refreshAttentionBtn.addEventListener('click', function() {
+            // Add spinning animation to the refresh icon
+            const icon = this.querySelector('i');
+            icon.classList.add('fa-spin');
+            
+            // Load the data
+            loadAttentionData().finally(() => {
+                // Remove spinning animation
+                icon.classList.remove('fa-spin');
+            });
+        });
+    }
+}
 // Function to load buses for the schedule modal
 function setupScheduleModalBusLoading() {
     // When the modal is shown, load the buses
@@ -588,6 +608,7 @@ async function loadDashboardData() {
     
     try {
         await loadOperatorStats();
+        await loadAttentionData(); // Load attention data when dashboard loads
         console.log('Dashboard data loaded successfully');
     } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -686,6 +707,60 @@ async function loadOperatorStats() {
     } catch (error) {
         console.error('Error loading operator stats:', error);
         showNotification('Error loading statistics', 'danger');
+    }
+}
+// Function to load attention data
+async function loadAttentionData() {
+    try {
+        console.log('Loading attention data...');
+        const response = await apiCall(API_PATHS.getAttention);
+        console.log('Attention data:', response);
+        
+        const attentionContainer = document.getElementById('attentionContainer');
+        if (!attentionContainer) {
+            console.error('Attention container not found');
+            return;
+        }
+        
+        // Clear existing content
+        attentionContainer.innerHTML = '';
+
+        // Add buses needing maintenance
+        if (response.buses_needing_maintenance && response.buses_needing_maintenance.length > 0) {
+            response.buses_needing_maintenance.forEach(bus => {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-warning';
+                alert.innerHTML = `<i class="fas fa-bus me-2"></i> Bus #${bus.plate_number} needs maintenance`;
+                attentionContainer.appendChild(alert);
+            });
+        }
+
+        // Add cancelled trips
+        if (response.cancelled_trips_today > 0) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger';
+            alert.innerHTML = `<i class="fas fa-calendar-times me-2"></i> ${response.cancelled_trips_today} trips cancelled today`;
+            attentionContainer.appendChild(alert);
+        }
+
+        // Add new reviews
+        if (response.new_reviews_to_respond > 0) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-info';
+            alert.innerHTML = `<i class="fas fa-star me-2"></i> ${response.new_reviews_to_respond} new reviews to respond to`;
+            attentionContainer.appendChild(alert);
+        }
+
+        // If there's nothing to show, add a message
+        if (attentionContainer.children.length === 0) {
+            attentionContainer.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i> Everything is up to date!</div>';
+        }
+    } catch (error) {
+        console.error('Error loading attention data:', error);
+        const attentionContainer = document.getElementById('attentionContainer');
+        if (attentionContainer) {
+            attentionContainer.innerHTML = '<div class="alert alert-danger">Failed to load attention data</div>';
+        }
     }
 }
 // Load Buses Data

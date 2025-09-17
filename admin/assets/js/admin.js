@@ -1,5 +1,6 @@
 const BASE_URL = window.location.origin + '/e-terminus';
 let currentUser = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     checkAdminAuthStatus();
     setupEventListeners();
@@ -29,8 +30,6 @@ async function checkAdminAuthStatus() {
             if (data.authenticated && data.user && (data.user.user_type === 'admin' || data.user.is_admin)) {
                 currentUser = data.user;
                 updateUIForLoggedInAdmin();
-                // Show login success notification
-                showSuccessNotification('Login successful! Welcome to Admin Dashboard.');
                 loadDashboardData();
             } else {
                 redirectToLogin();
@@ -1430,21 +1429,39 @@ async function rejectReview(reviewId) {
 // Logout admin
 async function logout() {
     try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`${BASE_URL}/api/auth/logout.php`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+        // Show confirmation modal
+        const logoutModal = new bootstrap.Modal(document.getElementById('logoutConfirmationModal'));
+        logoutModal.show();
+        
+        // Get the confirm button
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        
+        // Remove any existing event listeners to prevent multiple calls
+        const newConfirmBtn = confirmLogoutBtn.cloneNode(true);
+        confirmLogoutBtn.parentNode.replaceChild(newConfirmBtn, confirmLogoutBtn);
+        
+        // Add event listener to the confirm button
+        newConfirmBtn.addEventListener('click', async function() {
+            // Hide the modal
+            logoutModal.hide();
+            
+            // Perform the actual logout
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${BASE_URL}/api/auth/logout.php`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            // Clear local storage
+            localStorage.removeItem('auth_token');
+            
+            // Redirect to admin login
+            window.location.href = '../index.html';
         });
-        
-        // Clear local storage
-        localStorage.removeItem('auth_token');
-        
-        // Redirect to admin login
-        window.location.href = '../index.html';
     } catch (error) {
         console.error('Logout error:', error);
         showNotification('Error logging out', 'danger');
@@ -1533,34 +1550,4 @@ function showNotification(message, type = 'info') {
             }
         }, 150);
     }, 5000);
-}
-
-// Function to show success notification
-function showSuccessNotification(message) {
-    // Check if notification container exists, if not create one
-    let notificationContainer = document.getElementById('notificationContainer');
-    if (!notificationContainer) {
-        notificationContainer = document.createElement('div');
-        notificationContainer.id = 'notificationContainer';
-        notificationContainer.className = 'notification-container';
-        document.body.appendChild(notificationContainer);
-    }
-    
-    const notification = document.createElement('div');
-    notification.className = 'alert alert-success alert-dismissible fade show';
-    notification.innerHTML = `
-        <i class="fas fa-check-circle me-2"></i>${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    notificationContainer.appendChild(notification);
-    
-    // Auto-dismiss after 3 seconds
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            if (notificationContainer.contains(notification)) {
-                notificationContainer.removeChild(notification);
-            }
-        }, 150);
-    }, 3000);
 }

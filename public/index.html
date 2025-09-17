@@ -12,7 +12,55 @@
     <link rel="stylesheet" href="assets/css/main-styles.css">
     <link rel="stylesheet" href="../../e-terminus/assets/css/navbar-scroll.css">
     <style>
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 350px;
+        }
         
+        .notification {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification-success {
+            border-left: 4px solid #28a745;
+        }
+        
+        .notification-info {
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .notification-content {
+            flex-grow: 1;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #6c757d;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
     <link rel="icon" href="images/logo.png" type="image/png">
 </head>
@@ -83,7 +131,7 @@
                     </a>
                     <h2 class="mb-0">Dashboard Overview</h2>
                 </div>
-                <button class="btn btn-gradient-primary">
+                <button class="btn btn-gradient-primary new-booking-btn">
                     <i class="fas fa-plus me-1"></i> New Booking
                 </button>
             </div>
@@ -148,20 +196,19 @@
                     </div>
                     
                     <div class="row">
-                        <!-- Quick Actions -->
                         <div class="col-md-6 mb-4">
                             <div class="card quick-action-card">
                                 <div class="card-body">
                                     <h4 class="card-title mb-4"><i class="fas fa-bolt me-2 text-warning"></i>Quick Actions</h4>
                                     <div class="d-grid gap-2">
-                                        <button class="btn btn-outline-primary text-start py-2">
+                                        <button class="btn btn-outline-primary text-start py-2" id="findBusBtn">
                                             <i class="fas fa-search me-2"></i>Find a Bus
                                         </button>
-                                        <button class="btn btn-outline-secondary text-start py-2">
+                                        <button class="btn btn-outline-secondary text-start py-2" id="bookingHistoryBtn">
                                             <i class="fas fa-history me-2"></i>Booking History
                                         </button>
-                                        <button class="btn btn-outline-secondary text-start py-2">
-                                            <i class="fas fa-star me-2"></i>Leave a Review
+                                        <button class="btn btn-outline-secondary text-start py-2" id="leaveReviewBtn">
+                                            <i class="fas fa-star me-2"></i>My Reviews
                                         </button>
                                     </div>
                                 </div>
@@ -497,5 +544,94 @@
     <!-- Custom Dashboard JS -->
     <script src="assets/js/dashboard.js"></script>
     <script src="../../e-terminus/assets/js/navbar-scroll.js"></script>
+    
+    <!-- Quick Actions Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to show notifications
+        function showNotification(message, type = 'info') {
+            const notificationContainer = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>${message}
+                </div>
+                <button class="notification-close"><i class="fas fa-times"></i></button>
+            `;
+            notificationContainer.appendChild(notification);
+
+            // Add event listener to close button
+            notification.querySelector('.notification-close').addEventListener('click', function() {
+                notification.remove();
+            });
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Find Bus Button - Redirect to index.html (bus search page)
+        document.getElementById('findBusBtn').addEventListener('click', function() {
+            showNotification('Redirecting to bus search page...', 'info');
+            setTimeout(() => {
+                window.location.href = window.location.origin + '/e-terminus/index.html';
+            }, 1000);
+        });
+
+        // Booking History Button
+        document.getElementById('bookingHistoryBtn').addEventListener('click', function() {
+            // Switch to the bookings tab - FIXED
+            const bookingsTabTrigger = document.querySelector('[href="#bookings"]');
+            if (bookingsTabTrigger) {
+                const bookingsTab = new bootstrap.Tab(bookingsTabTrigger);
+                bookingsTab.show();
+                showNotification('Showing booking history', 'success');
+            } else {
+                console.error('Bookings tab trigger not found');
+                showNotification('Error accessing booking history', 'error');
+            }
+        });
+
+        // Leave Review Button
+        document.getElementById('leaveReviewBtn').addEventListener('click', function() {
+            // First switch to the reviews tab - FIXED
+            const reviewsTabTrigger = document.querySelector('[href="#reviews"]');
+            if (reviewsTabTrigger) {
+                const reviewsTab = new bootstrap.Tab(reviewsTabTrigger);
+                reviewsTab.show();
+                showNotification('Switched to reviews', 'info');
+                
+                // Then switch to the pending reviews sub-tab after a short delay - FIXED
+                setTimeout(() => {
+                    const pendingReviewsTabTrigger = document.querySelector('#pending-reviews-tab');
+                    if (pendingReviewsTabTrigger) {
+                        const pendingReviewsTab = new bootstrap.Tab(pendingReviewsTabTrigger);
+                        pendingReviewsTab.show();
+                        showNotification('Showing pending reviews', 'success');
+                    } else {
+                        console.error('Pending reviews tab trigger not found');
+                        showNotification('Error accessing pending reviews', 'error');
+                    }
+                }, 300);
+            } else {
+                console.error('Reviews tab trigger not found');
+                showNotification('Error accessing reviews', 'error');
+            }
+        });
+        
+        // Add event delegation for dynamically created "Book a Trip" buttons
+        document.addEventListener('click', function(e) {
+            // Check if the clicked element or its parent has the class 'new-booking-btn'
+            if (e.target.closest('.new-booking-btn')) {
+                showNotification('Redirecting to bus search page...', 'info');
+                setTimeout(() => {
+                    window.location.href = window.location.origin + '/e-terminus/index.html';
+                }, 1000);
+            }
+        });
+    });
+</script>
 </body>
 </html>

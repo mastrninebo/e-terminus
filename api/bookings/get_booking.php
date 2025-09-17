@@ -129,6 +129,7 @@ try {
             b.schedule_id,
             b.booking_status,
             b.booking_date,
+            b.number_of_seats,  -- Added this field
             s.departure_time,
             s.arrival_time,
             s.price,
@@ -171,15 +172,7 @@ try {
         exit();
     }
     
-    // Get the number of seats booked (we don't track individual seat numbers)
-    // Since we don't have a direct field for number of seats, we'll calculate it
-    // from the payment amount and price per seat
-    $numberOfSeats = 1; // Default to 1
-    if ($booking['price'] > 0 && $booking['amount_paid'] > 0) {
-        $numberOfSeats = round($booking['amount_paid'] / $booking['price']);
-    }
-    
-    $booking['number_of_seats'] = $numberOfSeats;
+    // Set passenger name from username
     $booking['passenger_name'] = $booking['username'] ?? 'N/A';
     
     // Check if user has permission to view this booking
