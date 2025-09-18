@@ -129,7 +129,6 @@ try {
             b.schedule_id,
             b.booking_status,
             b.booking_date,
-            b.number_of_seats,  -- Added this field
             s.departure_time,
             s.arrival_time,
             s.price,
@@ -174,6 +173,26 @@ try {
     
     // Set passenger name from username
     $booking['passenger_name'] = $booking['username'] ?? 'N/A';
+    
+    // Parse transaction_id to get number of seats if needed
+    $numberOfSeats = 1; // Default
+    if ($booking['transaction_id'] && strpos($booking['transaction_id'], '|') !== false) {
+        $transactionParts = explode('|', $booking['transaction_id']);
+        $numberOfSeats = intval($transactionParts[0]);
+        // Update transaction_id to only contain the actual transaction ID
+        $booking['transaction_id'] = $transactionParts[1] ?? null;
+    } else if ($booking['transaction_id'] && strpos($booking['transaction_id'], 'SEATS:') !== false) {
+        // Handle the case where we stored "SEATS:X" format initially
+        $numberOfSeats = intval(str_replace('SEATS:', '', $booking['transaction_id']));
+        $booking['transaction_id'] = null; // No actual transaction ID in this case
+    }
+    
+    $booking['number_of_seats'] = $numberOfSeats;
+    
+    // Calculate total amount if not already set
+    if (!$booking['amount_paid'] && $booking['price'] && $numberOfSeats) {
+        $booking['amount_paid'] = $booking['price'] * $numberOfSeats;
+    }
     
     // Check if user has permission to view this booking
     if ($userId && $userType !== 'admin' && $userId != $booking['user_id']) {

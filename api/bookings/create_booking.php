@@ -16,10 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-require_once __DIR__.'/../../config/database.php';
-require_once __DIR__.'/../../config/zynlepay.php';
-require_once __DIR__.'/../../includes/jwt-helper.php';
-require_once __DIR__.'/../../includes/ZynlePayService.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/zynlepay.php';
+require_once __DIR__ . '/../../includes/jwt-helper.php';
+require_once __DIR__ . '/../../includes/ZynlePayService.php';
 
 // Debug logging
 error_log("=== CREATE BOOKING DEBUG ===");
@@ -43,11 +43,14 @@ if (!$token && isset($_COOKIE['auth_token'])) {
 }
 
 // If no cookie, check session
-if (!$token && session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-if (!$token && isset($_SESSION['auth_token'])) {
-    $token = $_SESSION['auth_token'];
+if (!$token) {
+    // Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (isset($_SESSION['auth_token'])) {
+        $token = $_SESSION['auth_token'];
+    }
 }
 
 error_log("Token found: " . ($token ? 'Yes' : 'No'));
@@ -145,7 +148,7 @@ try {
         error_log("Schedule not found with ID: " . $scheduleId);
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Schedule not found']);
-        exit;
+        exit();
     }
     
     // Check if enough seats are available
@@ -153,7 +156,7 @@ try {
         error_log("Not enough seats. Available: " . $schedule['available_seats'] . ", Requested: " . $numberOfSeats);
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Not enough seats available']);
-        exit;
+        exit();
     }
     
     // Calculate total price
@@ -172,61 +175,53 @@ try {
     // Initialize variables that will be used in the response
     $bookingId = null;
     $paymentId = null;
-    $qrCode = null;
     $response = [
         'success' => true,
-        'booking_id' => null,
-        'qr_code' => null
+        'booking_id' => null
     ];
     
     // Begin transaction
     $db->beginTransaction();
     
     try {
-        // Create booking with number_of_seats
+        // Step 1: Create booking with CONFIRMED status but we'll track payment status separately
         $stmt = $db->prepare("
-            INSERT INTO bookings (user_id, schedule_id, booking_status, number_of_seats) 
-            VALUES (?, ?, 'confirmed', ?)
+            INSERT INTO bookings (user_id, schedule_id, booking_status) 
+            VALUES (?, ?, 'confirmed')
         ");
-        $stmt->execute([$userId, $scheduleId, $numberOfSeats]);
+        $stmt->execute([$userId, $scheduleId]);
         $bookingId = $db->lastInsertId();
         error_log("Booking created with ID: " . $bookingId);
         
-        // Create payment record with pending status
+        // Step 2: Create payment record with pending status
+        // Store number of seats in transaction_id temporarily
+        $tempTransactionId = "SEATS:" . $numberOfSeats;
         $stmt = $db->prepare("
-            INSERT INTO payments (booking_id, amount, payment_method, status) 
-            VALUES (?, ?, ?, 'pending')
+            INSERT INTO payments (booking_id, amount, payment_method, transaction_id, status) 
+            VALUES (?, ?, ?, ?, 'pending')
         ");
-        $stmt->execute([$bookingId, $totalPrice, $paymentMethod]);
+        $stmt->execute([$bookingId, $totalPrice, $paymentMethod, $tempTransactionId]);
         $paymentId = $db->lastInsertId();
         error_log("Payment created with ID: " . $paymentId);
         
-        // Generate QR code for ticket
-        $qrCode = 'ET-' . $bookingId . '-' . bin2hex(random_bytes(4));
-        
-        // Create ticket
-        $stmt = $db->prepare("
-            INSERT INTO tickets (booking_id, qr_code) 
-            VALUES (?, ?)
-        ");
-        $stmt->execute([$bookingId, $qrCode]);
-        error_log("Ticket created with QR code: " . $qrCode);
-        
-        // Update available seats
-        $stmt = $db->prepare("
-            UPDATE schedules 
-            SET available_seats = available_seats - ? 
-            WHERE schedule_id = ?
-        ");
-        $stmt->execute([$numberOfSeats, $scheduleId]);
-        error_log("Updated available seats for schedule " . $scheduleId);
-        
         // Set the basic response data
         $response['booking_id'] = $bookingId;
-        $response['qr_code'] = $qrCode;
+        $response['payment_id'] = $paymentId;
         
         // If payment method is Zynle Pay, initiate payment before committing the transaction
         if (in_array($paymentMethod, ['mobile_money', 'card'])) {
+            // Get the payment phone number from payment details or fall back to user's phone
+            $paymentPhone = $user['phone']; // Default to user's phone from database
+            
+            // If payment method is mobile money and mobile number is provided in payment details
+            if ($paymentMethod === 'mobile_money' && isset($paymentDetails['mobile_number']) && !empty($paymentDetails['mobile_number'])) {
+                // Format the mobile number with Zambia country code (260)
+                $paymentPhone = '260' . $paymentDetails['mobile_number'];
+                error_log("Using payment phone number: " . $paymentPhone);
+            } else {
+                error_log("Using user's phone number: " . $paymentPhone);
+            }
+            
             // Prepare data for Zynle Pay
             $paymentData = [
                 'amount' => $totalPrice,
@@ -234,7 +229,7 @@ try {
                 'order_desc' => 'Bus ticket from ' . $schedule['origin'] . ' to ' . $schedule['destination'],
                 'customer_name' => $user['username'],
                 'customer_email' => $user['email'],
-                'customer_phone' => $user['phone'],
+                'customer_phone' => $paymentPhone,
                 'payment_method' => $paymentMethod
             ];
             
@@ -254,15 +249,17 @@ try {
                     $transactionId = $zynleResponse['data']['response']['transaction_id'] ?? null;
                     $referenceNo = $zynleResponse['reference_no'] ?? null;
                     
-                    // Update payment record with transaction ID and reference number within the transaction
+                    // Update payment record with transaction ID (overwriting the temporary one)
+                    // Store number of seats and reference in transaction_id field
+                    $combinedTransactionId = $numberOfSeats . "|" . $transactionId . "|" . ($referenceNo ?? '');
                     $stmt = $db->prepare("
                         UPDATE payments 
-                        SET transaction_id = ?, status = 'pending' 
+                        SET transaction_id = ? 
                         WHERE payment_id = ?
                     ");
-                    $stmt->execute([$transactionId, $paymentId]);
+                    $stmt->execute([$combinedTransactionId, $paymentId]);
                     
-                    // Store the reference number in a session or database for callback verification
+                    // Store the reference number in a session for callback verification
                     $_SESSION['zynle_reference_no'] = $referenceNo;
                     
                     // Format the amount properly
@@ -272,7 +269,6 @@ try {
                     $response['payment_initiated'] = true;
                     $response['transaction_id'] = $transactionId;
                     $response['reference_no'] = $referenceNo;
-                    $response['payment_id'] = $paymentId;
                     $response['message'] = 'Payment initiated successfully. Please complete the payment on your mobile device.';
                     $response['redirect_url'] = "payment-simulation.html?booking_id={$bookingId}&transaction_id={$transactionId}&amount={$formattedAmount}";
                 } else {
@@ -283,7 +279,10 @@ try {
                     // Add payment error details to the response
                     $response['payment_pending'] = true;
                     $response['payment_error'] = $responseDescription;
-                    $response['payment_id'] = $paymentId;
+                    
+                    // Add redirect URL for error case
+                    $formattedAmount = number_format($totalPrice, 2, '.', '');
+                    $response['redirect_url'] = "payment-simulation.html?booking_id={$bookingId}&error=" . urlencode($responseDescription) . "&amount={$formattedAmount}";
                 }
             } else {
                 // Log the error for debugging
@@ -292,8 +291,40 @@ try {
                 // Add payment error details to the response
                 $response['payment_pending'] = true;
                 $response['payment_error'] = $zynleResponse['message'] ?? 'Payment service temporarily unavailable';
-                $response['payment_id'] = $paymentId;
+                
+                // Add redirect URL for API failure case
+                $formattedAmount = number_format($totalPrice, 2, '.', '');
+                $response['redirect_url'] = "payment-simulation.html?booking_id={$bookingId}&error=" . urlencode($zynleResponse['message'] ?? 'Payment service temporarily unavailable') . "&amount={$formattedAmount}";
             }
+        } else {
+            // For non-Zynle Pay payment methods (e.g., cash)
+            // Create ticket immediately
+            $qrCode = 'ET-' . $bookingId . '-' . bin2hex(random_bytes(4));
+            $stmt = $db->prepare("
+                INSERT INTO tickets (booking_id, qr_code) 
+                VALUES (?, ?)
+            ");
+            $stmt->execute([$bookingId, $qrCode]);
+            error_log("Ticket created with QR code: " . $qrCode);
+            
+            // Update available seats
+            $stmt = $db->prepare("
+                UPDATE schedules 
+                SET available_seats = available_seats - ? 
+                WHERE schedule_id = ?
+            ");
+            $stmt->execute([$numberOfSeats, $scheduleId]);
+            error_log("Updated available seats for schedule " . $scheduleId);
+            
+            // Update payment status to success
+            $stmt = $db->prepare("
+                UPDATE payments 
+                SET status = 'success' 
+                WHERE payment_id = ?
+            ");
+            $stmt->execute([$paymentId]);
+            
+            $response['qr_code'] = $qrCode;
         }
         
         // Commit transaction

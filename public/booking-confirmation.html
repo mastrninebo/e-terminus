@@ -346,8 +346,8 @@
                 <div class="col-lg-10">
                     <div class="confirmation-card">
                         <div class="confirmation-header">
-                            <h2 class="mb-0"><i class="fas fa-check-circle me-2"></i>Booking Confirmed!</h2>
-                            <p class="mb-0">Your ticket has been successfully booked</p>
+                            <h2 class="mb-0" id="confirmationTitle"><i class="fas fa-check-circle me-2"></i>Booking Confirmed!</h2>
+                            <p class="mb-0" id="confirmationSubtitle">Your ticket has been successfully booked</p>
                         </div>
                         <div class="card-body p-4" id="confirmationContent">
                             <div class="text-center">
@@ -375,10 +375,10 @@
                     </div>
                     
                     <div class="action-buttons text-center mt-4">
-                        <button class="btn btn-eterminus me-2" id="downloadTicket">
+                        <button class="btn btn-eterminus me-2" id="downloadTicket" style="display: none;">
                             <i class="fas fa-download me-2"></i> Download Ticket
                         </button>
-                        <button class="btn btn-outline-eterminus me-2" id="printTicket">
+                        <button class="btn btn-outline-eterminus me-2" id="printTicket" style="display: none;">
                             <i class="fas fa-print me-2"></i> Print Ticket
                         </button>
                         <a href="index.html" class="btn btn-outline-secondary">
@@ -456,6 +456,7 @@
                     if (response.success) {
                         displayBookingDetails(response.booking);
                         displayTicketDetails(response.booking);
+                        updateConfirmationHeader(response.booking);
                     } else {
                         showError(response.message || 'Failed to load booking details.');
                     }
@@ -467,6 +468,22 @@
             });
         }
         
+        function updateConfirmationHeader(booking) {
+            const titleElement = document.getElementById('confirmationTitle');
+            const subtitleElement = document.getElementById('confirmationSubtitle');
+            
+            if (booking.payment_status === 'success') {
+                titleElement.innerHTML = '<i class="fas fa-check-circle me-2"></i>Booking Confirmed!';
+                subtitleElement.textContent = 'Your ticket has been successfully booked';
+            } else if (booking.payment_status === 'pending') {
+                titleElement.innerHTML = '<i class="fas fa-hourglass-half me-2"></i>Payment Pending';
+                subtitleElement.textContent = 'Your booking is waiting for payment confirmation';
+            } else if (booking.payment_status === 'failed') {
+                titleElement.innerHTML = '<i class="fas fa-times-circle me-2"></i>Payment Failed';
+                subtitleElement.textContent = 'Your payment could not be processed';
+            }
+        }
+        
         function displayBookingDetails(booking) {
             const departureTime = new Date(booking.departure_time);
             const arrivalTime = new Date(booking.arrival_time);
@@ -474,6 +491,21 @@
             const hours = Math.floor(booking.duration_minutes / 60);
             const minutes = booking.duration_minutes % 60;
             const duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            
+            // Format booking status based on payment status
+            let bookingStatusClass = 'status-pending';
+            let bookingStatusText = 'Pending';
+            
+            if (booking.payment_status === 'success') {
+                bookingStatusClass = 'status-success';
+                bookingStatusText = 'Confirmed';
+            } else if (booking.payment_status === 'failed') {
+                bookingStatusClass = 'status-failed';
+                bookingStatusText = 'Cancelled';
+            } else if (booking.booking_status === 'completed') {
+                bookingStatusClass = 'status-success';
+                bookingStatusText = 'Completed';
+            }
             
             // Format payment status
             let paymentStatusClass = 'status-pending';
@@ -501,7 +533,9 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">Booking Status:</span>
-                            <span class="info-value">${booking.booking_status.charAt(0).toUpperCase() + booking.booking_status.slice(1)}</span>
+                            <span class="info-value">
+                                <span class="payment-status ${bookingStatusClass}">${bookingStatusText}</span>
+                            </span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Payment Status:</span>
@@ -559,101 +593,175 @@
             $('#confirmationContent').html(detailsHtml);
         }
         
-       // In public/booking-confirmation.html, update the displayTicketDetails function
-
-function displayTicketDetails(booking) {
-    const departureTime = new Date(booking.departure_time);
-    const arrivalTime = new Date(booking.arrival_time);
-    
-    const hours = Math.floor(booking.duration_minutes / 60);
-    const minutes = booking.duration_minutes % 60;
-    const duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-    
-    // Format payment status
-    let paymentStatusClass = 'status-pending';
-    let paymentStatusText = 'Pending';
-    
-    if (booking.payment_status === 'success') {
-        paymentStatusClass = 'status-success';
-        paymentStatusText = 'Paid';
-    } else if (booking.payment_status === 'failed') {
-        paymentStatusClass = 'status-failed';
-        paymentStatusText = 'Failed';
-    }
-    
-    const ticketHtml = `
-        <div class="ticket-left">
-            <div class="info-row">
-                <span class="info-label">Booking ID:</span>
-                <span class="info-value">#${booking.booking_id}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Passenger:</span>
-                <span class="info-value">${booking.passenger_name || 'N/A'}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Route:</span>
-                <span class="info-value">${booking.origin} → ${booking.destination}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Departure:</span>
-                <span class="info-value">${departureTime.toLocaleDateString()} at ${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Arrival:</span>
-                <span class="info-value">${arrivalTime.toLocaleDateString()} at ${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Duration:</span>
-                <span class="info-value">${duration}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Number of Seats:</span>
-                <span class="info-value">${booking.number_of_seats || 1}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Payment Status:</span>
-                <span class="info-value">
-                    <span class="payment-status ${paymentStatusClass}">${paymentStatusText}</span>
-                </span>
-            </div>
-        </div>
-        <div class="ticket-right">
-            <div class="qr-code" id="qrcode"></div>
-            <div class="text-center mt-2">
-                <small>Issued: ${new Date().toLocaleDateString()}</small>
-            </div>
-            <div class="text-center mt-3">
-                <small>Please present this ticket when boarding</small>
-            </div>
-        </div>
-    `;
-    
-    $('#ticketDetails').html(ticketHtml);
-    
-    // Generate QR code
-    if (booking.qr_code) {
-        // If we have a QR code string from the server, use it
-        new QRCode(document.getElementById("qrcode"), {
-            text: booking.qr_code,
-            width: 100,
-            height: 100,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-        });
-    } else {
-        // Otherwise, generate a QR code with the booking ID
-        new QRCode(document.getElementById("qrcode"), {
-            text: `Booking ID: ${booking.booking_id}`,
-            width: 100,
-            height: 100,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-        });
-    }
-}
+        function displayTicketDetails(booking) {
+            const departureTime = new Date(booking.departure_time);
+            const arrivalTime = new Date(booking.arrival_time);
+            
+            const hours = Math.floor(booking.duration_minutes / 60);
+            const minutes = booking.duration_minutes % 60;
+            const duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            
+            // Format booking status based on payment status
+            let bookingStatusClass = 'status-pending';
+            let bookingStatusText = 'Pending';
+            
+            if (booking.payment_status === 'success') {
+                bookingStatusClass = 'status-success';
+                bookingStatusText = 'Confirmed';
+            } else if (booking.payment_status === 'failed') {
+                bookingStatusClass = 'status-failed';
+                bookingStatusText = 'Cancelled';
+            } else if (booking.booking_status === 'completed') {
+                bookingStatusClass = 'status-success';
+                bookingStatusText = 'Completed';
+            }
+            
+            // Format payment status
+            let paymentStatusClass = 'status-pending';
+            let paymentStatusText = 'Pending';
+            
+            if (booking.payment_status === 'success') {
+                paymentStatusClass = 'status-success';
+                paymentStatusText = 'Paid';
+            } else if (booking.payment_status === 'failed') {
+                paymentStatusClass = 'status-failed';
+                paymentStatusText = 'Failed';
+            }
+            
+            let ticketHtml = `
+                <div class="ticket-left">
+                    <div class="info-row">
+                        <span class="info-label">Booking ID:</span>
+                        <span class="info-value">#${booking.booking_id}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Passenger:</span>
+                        <span class="info-value">${booking.passenger_name || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Route:</span>
+                        <span class="info-value">${booking.origin} → ${booking.destination}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Departure:</span>
+                        <span class="info-value">${departureTime.toLocaleDateString()} at ${departureTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Arrival:</span>
+                        <span class="info-value">${arrivalTime.toLocaleDateString()} at ${arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Duration:</span>
+                        <span class="info-value">${duration}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Number of Seats:</span>
+                        <span class="info-value">${booking.number_of_seats || 1}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Booking Status:</span>
+                        <span class="info-value">
+                            <span class="payment-status ${bookingStatusClass}">${bookingStatusText}</span>
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Payment Status:</span>
+                        <span class="info-value">
+                            <span class="payment-status ${paymentStatusClass}">${paymentStatusText}</span>
+                        </span>
+                    </div>
+            `;
+            
+            // Only show QR code if payment is successful
+            if (booking.payment_status === 'success') {
+                ticketHtml += `
+                    <div class="ticket-right">
+                        <div class="qr-code" id="qrcode"></div>
+                        <div class="text-center mt-2">
+                            <small>Issued: ${new Date().toLocaleDateString()}</small>
+                        </div>
+                        <div class="text-center mt-3">
+                            <small>Please present this ticket when boarding</small>
+                        </div>
+                    </div>
+                `;
+                
+                // Show download and print buttons
+                $('#downloadTicket').show();
+                $('#printTicket').show();
+            } else if (booking.payment_status === 'pending') {
+                ticketHtml += `
+                    <div class="ticket-right">
+                        <div class="text-center p-4">
+                            <i class="fas fa-hourglass-half fa-3x text-warning mb-3"></i>
+                            <h5>Payment Pending</h5>
+                            <p>Your booking is waiting for payment confirmation.</p>
+                            ${booking.transaction_id ? `<p class="small">Transaction ID: ${booking.transaction_id}</p>` : ''}
+                            <div class="mt-3">
+                                <a href="../booking.html?schedule_id=${booking.schedule_id}&step=payment&booking_id=${booking.booking_id}" class="btn btn-eterminus">
+                                    <i class="fas fa-credit-card me-2"></i> Complete Payment
+                                </a>
+                            </div>
+                            <div class="mt-2">
+                                <small>Click to select your payment method and complete the payment</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Hide download and print buttons
+                $('#downloadTicket').hide();
+                $('#printTicket').hide();
+            } else if (booking.payment_status === 'failed') {
+                ticketHtml += `
+                    <div class="ticket-right">
+                        <div class="text-center p-4">
+                            <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                            <h5>Payment Failed</h5>
+                            <p>Your payment could not be processed. Please try again or contact support.</p>
+                            <div class="mt-3">
+                                <a href="booking.html?schedule_id=${booking.schedule_id}&step=payment&booking_id=${booking.booking_id}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-redo me-2"></i> Try Again
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Hide download and print buttons
+                $('#downloadTicket').hide();
+                $('#printTicket').hide();
+            }
+            
+            ticketHtml += '</div>';
+            
+            $('#ticketDetails').html(ticketHtml);
+            
+            // Generate QR code only if payment is successful
+            if (booking.payment_status === 'success') {
+                if (booking.qr_code) {
+                    // If we have a QR code string from the server, use it
+                    new QRCode(document.getElementById("qrcode"), {
+                        text: booking.qr_code,
+                        width: 100,
+                        height: 100,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                } else {
+                    // Otherwise, generate a QR code with the booking ID
+                    new QRCode(document.getElementById("qrcode"), {
+                        text: `Booking ID: ${booking.booking_id}`,
+                        width: 100,
+                        height: 100,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            }
+        }
         
         function setupEventListeners() {
             // Download ticket

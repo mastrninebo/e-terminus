@@ -10,6 +10,8 @@ const API_PATHS = {
     getBookings: `${BASE_URL}/api/operator/get_bookings.php`,
     getReviews: `${BASE_URL}/api/operator/get_reviews.php`,
     createBus: `${BASE_URL}/api/operator/create_bus.php`,
+    updateBus: `${BASE_URL}/api/operator/update_bus.php`,
+    deleteBus: `${BASE_URL}/api/operator/delete_bus.php`,
     createSchedule: `${BASE_URL}/api/operator/create_schedule.php`,
     deleteSchedule: `${BASE_URL}/api/operator/delete_schedule.php`,
     updateSchedule: `${BASE_URL}/api/operator/update_schedule.php`,
@@ -560,6 +562,12 @@ function setupDashboardEventListeners() {
     const addBusBtn = document.getElementById('saveBusBtn');
     if (addBusBtn) {
         addBusBtn.addEventListener('click', saveBus);
+    }
+
+    // Update bus button
+    const updateBusBtn = document.getElementById('updateBusBtn');
+    if (updateBusBtn) {
+        updateBusBtn.addEventListener('click', updateBus);
     }
     
     // Add schedule button
@@ -1322,14 +1330,123 @@ function printTicket(bookingId) {
     showNotification(`Printing ticket for booking #${bookingId}`, 'info');
 }
 // Edit Bus
-function editBus(busId) {
-    showNotification(`Editing bus #${busId}`, 'info');
+async function editBus(busId) {
+    try {
+        // Fetch the current bus data
+        const response = await fetch(`${API_PATHS.getBuses}?bus_id=${busId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch bus data');
+        }
+        
+        const buses = await response.json();
+        const bus = buses.find(b => b.bus_id == busId);
+        
+        if (!bus) {
+            throw new Error('Bus not found');
+        }
+        
+        // Populate the edit modal form
+        document.getElementById('editBusId').value = bus.bus_id;
+        document.getElementById('editBusPlateNumber').value = bus.plate_number;
+        document.getElementById('editBusCapacity').value = bus.capacity;
+        document.getElementById('editBusStatus').value = bus.status;
+        
+        // Show the edit modal
+        const editModal = new bootstrap.Modal(document.getElementById('editBusModal'));
+        editModal.show();
+        
+    } catch (error) {
+        console.error('Error editing bus:', error);
+        showNotification('Error loading bus data: ' + error.message, 'danger');
+    }
 }
+
+// Update Bus
+async function updateBus() {
+    try {
+        // Get form values
+        const busId = document.getElementById('editBusId').value;
+        const plateNumber = document.getElementById('editBusPlateNumber').value;
+        const capacity = document.getElementById('editBusCapacity').value;
+        const status = document.getElementById('editBusStatus').value;
+        
+        if (!plateNumber || !capacity) {
+            showNotification('Please fill in all required fields', 'danger');
+            return;
+        }
+        
+        const busData = {
+            busId: parseInt(busId),
+            plateNumber,
+            capacity: parseInt(capacity),
+            status
+        };
+        
+        console.log('Updating bus:', busData);
+        
+        const response = await apiCall(API_PATHS.updateBus, {
+            method: 'POST',
+            body: JSON.stringify(busData)
+        });
+        
+        console.log('Update bus response:', response);
+        
+        if (response.success) {
+            showNotification('Bus updated successfully', 'success');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editBusModal'));
+            modal.hide();
+            
+            // Reload buses data
+            loadBusesData();
+        } else {
+            showNotification(response.error || 'Error updating bus', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating bus:', error);
+        showNotification('Error updating bus', 'danger');
+    }
+}
+
 // Delete Bus
-function deleteBus(busId) {
-    showConfirmationModal('Are you sure you want to delete this bus?', function() {
-        showNotification(`Deleting bus #${busId}`, 'info');
-        // Add actual delete logic here
+async function deleteBus(busId) {
+    showConfirmationModal('Are you sure you want to delete this bus?', async function() {
+        try {
+            console.log('Deleting bus:', busId);
+            
+            const response = await fetch(`${API_PATHS.deleteBus}?bus_id=${busId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                }
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete bus');
+            }
+            
+            const data = await response.json();
+            console.log('Delete bus response:', data);
+            
+            if (data.success) {
+                showNotification('Bus deleted successfully', 'success');
+                // Reload buses data
+                loadBusesData();
+            } else {
+                showNotification(data.error || 'Error deleting bus', 'danger');
+            }
+        } catch (error) {
+            console.error('Error deleting bus:', error);
+            showNotification('Error deleting bus: ' + error.message, 'danger');
+        }
     });
 }
 // Edit Schedule

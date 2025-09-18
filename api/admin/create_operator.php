@@ -173,27 +173,25 @@ try {
         $userId = $db->lastInsertId();
         error_log("Created user with ID: " . $userId);
         
-        // Insert operator
+        // Generate operator code before inserting
+        $operatorCode = 'OPR-' . str_pad($userId, 6, '0', STR_PAD_LEFT);
+        error_log("Generated operator code: " . $operatorCode);
+        
+        // Insert operator with operator_code
         $stmt = $db->prepare("
-            INSERT INTO operators (user_id, company_name, contact_person, status) 
-            VALUES (?, ?, ?, ?)
+            INSERT INTO operators (user_id, company_name, contact_person, status, operator_code) 
+            VALUES (?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $userId,
             $data['companyName'],
             $data['contactPerson'] ?? null,
-            $data['status'] ?? 'active'
+            $data['status'] ?? 'active',
+            $operatorCode
         ]);
         
         $operatorId = $db->lastInsertId();
         error_log("Created operator with ID: " . $operatorId);
-        
-        // Generate operator code
-        $operatorCode = 'OPR-' . str_pad($operatorId, 6, '0', STR_PAD_LEFT);
-        
-        // Update operator with generated code
-        $stmt = $db->prepare("UPDATE operators SET operator_code = ? WHERE operator_id = ?");
-        $stmt->execute([$operatorCode, $operatorId]);
         
         // Commit transaction
         $db->commit();

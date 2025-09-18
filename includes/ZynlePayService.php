@@ -39,7 +39,7 @@ class ZynlePayService {
         }
         
         // Convert amount to the smallest currency unit (ngwee for ZMW)
-        $amountInSmallestUnit = (int)($paymentData['amount'] * 100);
+        $amountInSmallestUnit = (int)($paymentData['amount'] * 1);
         
         // Generate a unique reference number
         $referenceNo = $this->generateReferenceNumber();

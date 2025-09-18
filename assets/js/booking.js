@@ -1,6 +1,48 @@
 // assets/js/booking.js
 
+// Configuration for payment logos
+const paymentLogos = {
+    airtel: {
+        src: 'images/payment-logos/airtel-logo.jpg',
+        alt: 'Airtel Money'
+    },
+    mtn: {
+        src: 'images/payment-logos/mtn-logo.png',
+        alt: 'MTN Mobile Money'
+    },
+    zamtel: {
+        src: 'images/payment-logos/zamtel-logo.jpg',
+        alt: 'Zamtel Kwacha'
+    }
+};
+
+// Function to generate payment logos HTML
+function generatePaymentLogos(containerId, useProviderClass = false) {
+    const container = $(`#${containerId}`);
+    let html = '';
+    
+    for (const [provider, logo] of Object.entries(paymentLogos)) {
+        const className = useProviderClass ? 'provider-logo' : 'payment-logo';
+        html += `<img src="${logo.src}" alt="${logo.alt}" class="${className}">`;
+    }
+    
+    container.html(html);
+}
+
+// Helper function to get provider descriptions
+function getProviderDescription(provider) {
+    const descriptions = {
+        airtel: 'Fast, reliable mobile money service',
+        mtn: 'Simple, secure mobile payments',
+        zamtel: 'Zambia\'s trusted mobile money'
+    };
+    return descriptions[provider] || '';
+}
+
 $(document).ready(function() {
+    // Generate initial payment logos
+    generatePaymentLogos('mobileMoneyLogos');
+    
     // Get schedule ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     const scheduleId = urlParams.get('schedule_id');
@@ -250,33 +292,25 @@ function showPaymentMethodFields(method) {
     
     switch (method) {
         case 'mobile_money':
+            let providersHtml = '';
+            
+            for (const [provider, logo] of Object.entries(paymentLogos)) {
+                providersHtml += `
+                    <div class="payment-method" data-provider="${provider}">
+                        <input type="radio" name="mobileProvider" value="${provider}">
+                        <img src="${logo.src}" alt="${logo.alt}" class="provider-logo">
+                        <div class="payment-details">
+                            <h6>${logo.alt}</h6>
+                            <small>${getProviderDescription(provider)}</small>
+                        </div>
+                    </div>
+                `;
+            }
+            
             detailsContainer.html(`
                 <div class="mb-3">
                     <label class="form-label">Select Mobile Money Provider</label>
-                    <div class="payment-method" data-provider="airtel">
-                        <input type="radio" name="mobileProvider" value="airtel">
-                        <div class="provider-logo airtel-logo">A</div>
-                        <div class="payment-details">
-                            <h6>Airtel Money</h6>
-                            <small>Fast, reliable mobile money service</small>
-                        </div>
-                    </div>
-                    <div class="payment-method" data-provider="mtn">
-                        <input type="radio" name="mobileProvider" value="mtn">
-                        <div class="provider-logo mtn-logo">M</div>
-                        <div class="payment-details">
-                            <h6>MTN Mobile Money</h6>
-                            <small>Simple, secure mobile payments</small>
-                        </div>
-                    </div>
-                    <div class="payment-method" data-provider="zamtel">
-                        <input type="radio" name="mobileProvider" value="zamtel">
-                        <div class="provider-logo zamtel-logo">Z</div>
-                        <div class="payment-details">
-                            <h6>Zamtel Kwacha</h6>
-                            <small>Zambia's trusted mobile money</small>
-                        </div>
-                    </div>
+                    ${providersHtml}
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Mobile Number</label>
@@ -413,8 +447,6 @@ function getPaymentDetails() {
     
     return details;
 }
-
-// In booking.js, update the processBooking function
 
 function processBooking() {
     showLoading(true);
@@ -618,4 +650,33 @@ function showError(message) {
     $('.toast').on('hidden.bs.toast', function () {
         $(this).remove();
     });
+}
+// Function to show warning notification
+function showWarning(message) {
+    // Check if notification container exists, if not create one
+    let notificationContainer = document.getElementById('notificationContainer');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notificationContainer';
+        notificationContainer.className = 'notification-container';
+        document.body.appendChild(notificationContainer);
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-warning alert-dismissible fade show';
+    notification.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    notificationContainer.appendChild(notification);
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notificationContainer.contains(notification)) {
+                notificationContainer.removeChild(notification);
+            }
+        }, 150);
+    }, 3000);
 }
